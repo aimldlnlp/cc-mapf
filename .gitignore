@@ -59,7 +59,7 @@ coverage.xml
 .hypothesis/
 
 # Large files (except docs/assets for README)
-*.gif
+# *.gif  # Allow GIFs for README demonstrations
 *.png
 *.jpg
 *.jpeg
