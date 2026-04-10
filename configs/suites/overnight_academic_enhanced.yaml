@@ -1,0 +1,44 @@
+name: overnight_academic_enhanced
+families:
+  - open
+  - corridor
+  - warehouse
+  - formation_shift
+scales:
+  - width: 16
+    height: 16
+    agents: 4
+  - width: 24
+    height: 24
+    agents: 8
+  - width: 32
+    height: 32
+    agents: 12
+seeds: [1, 2, 3, 4, 5]
+planners:
+  - connected_step
+time_limit_s: 180.0
+time_limit_s_by_scale:
+  16x16_4a: 60.0
+  24x24_8a: 180.0
+  32x32_12a: 360.0
+render:
+  enabled: true
+  preset: showcase
+  font_family: DejaVu Serif
+  font_weight: normal
+  dpi: 150
+  figsize: [6.0, 6.0]
+  # Enhanced animation settings
+  gif_fps: 8                    # Smoother playback
+  interpolation_steps: 4        # Smoother transitions
+  show_connectivity_edges: true
+  # Academic theme
+  palette_preset: academic
+  theme: academic
+  glow_effect: false
+  glow_radius: 0
+  agent_size: 0.30
+  snapshot_timestep_policy: middle
+  annotation_style: minimal
+output_root: artifacts/runs

@@ -1,0 +1,21 @@
+name: overnight_hard_cases
+families:
+  - open
+  - corridor
+  - warehouse
+  - formation_shift
+scales:
+  - width: 24
+    height: 24
+    agents: 8
+  - width: 32
+    height: 32
+    agents: 12
+seeds: [1, 2, 3, 4, 5]
+planners:
+  - connected_step
+time_limit_s: 300.0
+render:
+  enabled: false
+  preset: showcase
+output_root: artifacts/runs

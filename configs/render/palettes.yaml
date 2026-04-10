@@ -1,0 +1,103 @@
+# Palette presets for visualization
+# Usage in suite config: palette: vibrant (or ocean, forest, sunset, cyberpunk, earthy)
+
+palettes:
+  # Original earthy tones (default)
+  earthy:
+    - "#4C5B61"
+    - "#7D6B57"
+    - "#819A91"
+    - "#A67C52"
+    - "#59788E"
+    - "#B26E63"
+    - "#8E9AAF"
+    - "#7C9885"
+
+  # Vibrant rainbow - high contrast, colorful
+  vibrant:
+    - "#FF006E"  # Hot Pink
+    - "#FB5607"  # Orange
+    - "#FFBE0B"  # Yellow
+    - "#8338EC"  # Purple
+    - "#3A86FF"  # Blue
+    - "#06FFB4"  # Teal
+    - "#FF4365"  # Coral
+    - "#00D9FF"  # Cyan
+    - "#FF9F1C"  # Amber
+    - "#2EC4B6"  # Turquoise
+    - "#E71D36"  # Red
+    - "#662E9B"  # Deep Purple
+
+  # Ocean theme - blues and teals
+  ocean:
+    - "#03045E"  # Navy
+    - "#0077B6"  # Ocean Blue
+    - "#0096C7"  # Cerulean
+    - "#00B4D8"  # Sky Blue
+    - "#48CAE4"  # Light Blue
+    - "#90E0EF"  # Pale Blue
+    - "#ADE8F4"  # Ice Blue
+    - "#CAF0F8"  # Very Pale
+
+  # Forest theme - greens
+  forest:
+    - "#1B4332"  # Dark Forest
+    - "#2D6A4F"  # Forest Green
+    - "#40916C"  # Medium Green
+    - "#52B788"  # Mint Green
+    - "#74C69D"  # Light Mint
+    - "#95D5B2"  # Pale Green
+    - "#B7E4C7"  # Very Pale
+    - "#D8F3DC"  # Almost White Green
+
+  # Sunset theme - warm colors
+  sunset:
+    - "#6A040F"  # Deep Red
+    - "#9D0208"  # Dark Red
+    - "#D00000"  # Red
+    - "#DC2F02"  # Orange Red
+    - "#E85D04"  # Orange
+    - "#F48C06"  # Golden
+    - "#FAA307"  # Yellow Orange
+    - "#FFBA08"  # Yellow
+
+  # Cyberpunk theme - neon on dark
+  cyberpunk:
+    - "#F72585"  # Neon Pink
+    - "#B5179E"  # Magenta
+    - "#7209B7"  # Purple
+    - "#560BAD"  # Deep Purple
+    - "#480CA8"  # Indigo
+    - "#3A0CA3"  # Deep Blue
+    - "#3F37C9"  # Blue
+    - "#4361EE"  # Royal Blue
+    - "#4895EF"  # Sky Blue
+    - "#4CC9F0"  # Cyan
+    - "#00F5D4"  # Bright Cyan
+    - "#00BBF9"  # Electric Blue
+
+  # Pastel theme - soft colors
+  pastel:
+    - "#FFB3BA"  # Pastel Pink
+    - "#FFDFBA"  # Pastel Peach
+    - "#FFFFBA"  # Pastel Yellow
+    - "#BAFFC9"  # Pastel Green
+    - "#BAE1FF"  # Pastel Blue
+    - "#E6B3FF"  # Pastel Purple
+    - "#FFB3E6"  # Pastel Magenta
+    - "#B3FFF0"  # Pastel Cyan
+
+  # High contrast theme - accessibility focused
+  high_contrast:
+    - "#FF0000"  # Pure Red
+    - "#00FF00"  # Pure Green
+    - "#0000FF"  # Pure Blue
+    - "#FFFF00"  # Pure Yellow
+    - "#FF00FF"  # Pure Magenta
+    - "#00FFFF"  # Pure Cyan
+    - "#FF8000"  # Orange
+    - "#8000FF"  # Purple
+    - "#0080FF"  # Sky Blue
+    - "#80FF00"  # Lime
+    - "#FF0080"  # Hot Pink
+    - "#00FF80"  # Spring Green
