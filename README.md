@@ -25,6 +25,103 @@ A research-grade Python toolkit for **connectivity-constrained multi-agent path 
 | Open Space | 86.7% (13/15) |
 | Warehouse | 66.7% (10/15) |
 
+## 🎨 Visualization Gallery
+
+### 1. Problem Setup
+Initial configuration showing agents (colored circles), goals (outlined squares), and obstacles (hatched patterns).
+
+![Problem Setup](https://user-images.githubusercontent.com/placeholder/problem-setup.png)
+*Figure 1: Problem setup for open_32x32_12a instance with 12 agents*
+
+### 2. Start Configuration
+Connected team at timestep 0 with connectivity edges shown.
+
+![Start Configuration](https://user-images.githubusercontent.com/placeholder/start-config.png)
+*Figure 2: Start configuration showing initial connected formation*
+
+### 3. Mid-Execution
+Agents navigating through corridor with maintained connectivity.
+
+![Mid Execution](https://user-images.githubusercontent.com/placeholder/mid-execution.png)
+*Figure 3: Corridor execution at timestep 11*
+
+### 4. Formation Transition
+Dynamic formation shift maneuver with coordinated movement.
+
+![Formation Transition](https://user-images.githubusercontent.com/placeholder/formation.png)
+*Figure 4: Formation transition at midpoint*
+
+### 5. Final Configuration
+All agents reached their goals with makespan displayed.
+
+![Final Configuration](https://user-images.githubusercontent.com/placeholder/final.png)
+*Figure 5: Final configuration - all goals reached*
+
+### 6. Baseline Comparison
+Side-by-side comparison: baseline vs connectivity-aware planner.
+
+![Baseline Comparison](https://user-images.githubusercontent.com/placeholder/comparison.png)
+*Figure 6: Baseline (left) violates connectivity; Connected step (right) maintains team integrity*
+
+### 7. Benchmark Summary
+Aggregated metrics: success rate, makespan, runtime.
+
+![Benchmark Summary](https://user-images.githubusercontent.com/placeholder/summary.png)
+*Figure 7: Performance summary across all benchmark instances*
+
+## 📈 Advanced Analysis
+
+### Traffic Density Heatmaps
+
+#### Open Space Family
+![Open Traffic](https://user-images.githubusercontent.com/placeholder/traffic-open.png)
+*Heatmap showing traffic density in open space environments*
+
+#### Corridor Family
+![Corridor Traffic](https://user-images.githubusercontent.com/placeholder/traffic-corridor.png)
+*Heatmap showing bottleneck areas in corridor navigation*
+
+#### Warehouse Family
+![Warehouse Traffic](https://user-images.githubusercontent.com/placeholder/traffic-warehouse.png)
+*Heatmap showing congestion in warehouse environments*
+
+#### Formation Shift Family
+![Formation Traffic](https://user-images.githubusercontent.com/placeholder/traffic-formation.png)
+*Heatmap showing movement patterns during formation shifts*
+
+### Failure Analysis Dashboard
+
+![Failure Analysis](https://user-images.githubusercontent.com/placeholder/failure-analysis.png)
+*Comprehensive failure analysis showing:*
+- *Top-left: Success vs Failure by Family*
+- *Top-right: Success vs Failure by Scale*
+- *Bottom-left: Failure Reasons (timeout, stalled, step_cap)*
+- *Bottom-right: Runtime Distribution*
+
+### Stuck Position Heatmap
+
+![Stuck Positions](https://user-images.githubusercontent.com/placeholder/stuck-positions.png)
+*Heatmap showing where agents get stuck in failed instances*
+
+## 🎬 Animated Demonstrations
+
+### GIF 1: Corridor Compare
+Side-by-side comparison of baseline vs connected planner in corridor environment.
+
+*Features: Trail effects, timestamp overlay, smooth 8 FPS animation*
+
+### GIF 2: Warehouse Compare
+Navigation through warehouse with narrow passages.
+
+### GIF 3: Formation Compare
+Formation shift maneuver showing coordinated team movement.
+
+### GIF 4: Open Space Connected
+Large open area navigation with connectivity maintenance.
+
+### GIF 5: Cluster Shift
+Tight cluster repositioning with dynamic connectivity.
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -81,30 +178,6 @@ cc-mapf/
 └── README.md
 ```
 
-## 🎨 Visualization Examples
-
-### 1. Problem Setup
-Shows initial agent positions (colored circles) with goals (outlined squares) and obstacles (hatched patterns).
-
-*Generated with academic theme - DejaVu Serif font, 200 DPI, print-ready*
-
-### 2. Traffic Density Heatmaps
-Per-family analysis showing congestion hotspots across all instances.
-
-### 3. Failure Analysis Dashboard
-Comprehensive analysis including:
-- Success vs Failure by Family
-- Success vs Failure by Scale
-- Failure Reasons (timeout, stalled, step_cap)
-- Runtime Distribution
-
-### 4. Animated GIFs
-Side-by-side planner comparisons with trail effects:
-- Corridor navigation
-- Warehouse environment
-- Formation shift
-- Open space movement
-
 ## ⚙️ Configuration
 
 ### Suite Configuration
@@ -135,23 +208,22 @@ render:
 
 ### Available Themes
 
-| Theme | Description |
-|-------|-------------|
-| `academic` | Paper-quality, DejaVu Serif, hatch patterns |
-| `light` | Clean white background |
-| `dark` | Dark mode with subtle glow |
-| `cyberpunk` | Neon aesthetic |
+| Theme | Description | Best For |
+|-------|-------------|----------|
+| `academic` | DejaVu Serif, hatch patterns, white bg | Papers, publications |
+| `light` | Clean white, minimal | Presentations |
+| `dark` | Dark bg, subtle glow | Dark mode fans |
+| `cyberpunk` | Neon colors, futuristic | Demos, videos |
 
 ### Available Palettes
 
-- `academic` - CMYK-friendly muted colors
-- `vibrant` - Rainbow colors
-- `ocean` - Blues and teals
-- `forest` - Greens
-- `sunset` - Warm reds/oranges
-- `cyberpunk` - Neon pink/purple/cyan
-- `pastel` - Soft colors
-- `high_contrast` - Accessibility-focused
+| Palette | Colors | Use Case |
+|---------|--------|----------|
+| `academic` | Blue, Crimson, Emerald, Amber | CMYK print |
+| `vibrant` | Rainbow | Presentations |
+| `ocean` | Blues, teals | Calm aesthetic |
+| `forest` | Greens | Nature themes |
+| `cyberpunk` | Neon pink, purple, cyan | Futuristic |
 
 ## 📖 Usage Guide
 
@@ -204,7 +276,10 @@ artifacts/runs/{timestamp}_{suite}/
 │   ├── gif04_open_space_connected.gif
 │   └── gif05_cluster_shift_connected.gif
 ├── visualisasi/            # Advanced analysis (heatmaps)
-│   ├── heatmap_traffic_{family}.png
+│   ├── heatmap_traffic_open.png
+│   ├── heatmap_traffic_corridor.png
+│   ├── heatmap_traffic_warehouse.png
+│   ├── heatmap_traffic_formation_shift.png
 │   ├── failure_analysis_dashboard.png
 │   └── heatmap_failure_positions.png
 ├── plans/                  # JSON plan files
@@ -276,4 +351,10 @@ For questions or support, please open an issue on GitHub.
 
 ---
 
-**Note**: Large output files (PNG, GIF, logs) are excluded from the repository via `.gitignore`. Run experiments locally to generate visualizations.
+**Note**: Visualizations shown above are representative. Run experiments locally to generate your own figures. Large output files (PNG, GIF, logs) are excluded from the repository via `.gitignore`.
+
+**To add your own visualizations to this README:**
+1. Run experiments: `./run_enhanced_full_detached.sh`
+2. Upload generated PNGs to GitHub issue/comment
+3. Copy the generated URL
+4. Replace placeholder URLs in this README
