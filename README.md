@@ -1,141 +1,113 @@
-# Connectivity-Constrained MAPF
+# CC-MAPF: Connectivity-Constrained Multi-Agent Path Finding
 
-A research-grade Python toolkit for connectivity-constrained multi-agent path finding on 2D grids.
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-![Problem Setup](artifacts/runs/20260409-074900_overnight_premium/showcase/fig01_problem_setup.png)
+A research-grade Python toolkit for **connectivity-constrained multi-agent path finding** on 2D grids. This tool generates synthetic benchmark instances, solves them with connectivity-aware planners, validates execution traces, and produces publication-quality visualizations.
 
-## Overview
+## 🎯 Key Features
 
-`cc_mapf` generates synthetic benchmark instances, solves them with connectivity-aware planners, validates execution traces, and produces publication-quality visualizations.
+- **Connectivity Constraints**: Maintains team connectivity at every timestep
+- **Multiple Planners**: Greedy, Prioritized, CBS, and connectivity-aware step planner
+- **Rich Benchmarks**: 4 instance families (open, corridor, warehouse, formation_shift)
+- **Publication Visualizations**: Academic-quality figures with heatmaps and animations
+- **Validation**: Automated conflict and connectivity validation
 
-**Key Results:**
-- ✅ **86.7% success rate** (52/60 instances) on challenging benchmark
-- ✅ **100% success** on formation_shift family
-- ✅ **95% success** on medium-scale instances (24×24, 8 agents)
+## 📊 Results
 
-## Features
+**Benchmark Performance** (60 instances, 4 families, 3 scales):
 
-- **Discrete synchronous grid MAPF** with 4-neighbor moves plus wait
-- **Connectivity constraints** enforced at every timestep
-- **Conflict validation:** vertex conflicts, swap conflicts, connectivity violations
-- **Synthetic benchmarks:** `open`, `corridor`, `warehouse`, `formation_shift`
-- **Planner suite:** greedy, prioritized, CBS, connectivity-aware step planner
-- **Rich visualizations:** traffic heatmaps, failure analysis, animated GIFs
+| Metric | Value |
+|--------|-------|
+| **Overall Success Rate** | **86.7%** (52/60) |
+| Formation Shift | 100% (15/15) |
+| Corridor | 93.3% (14/15) |
+| Open Space | 86.7% (13/15) |
+| Warehouse | 66.7% (10/15) |
 
-## Installation
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/aimldlnlp/cc-mapf.git
+cd cc-mapf
+
+# Install dependencies
 python3 -m pip install -e .[dev]
 ```
 
-## Quick Start
-
-### 1. Run Benchmark Suite
+### Run Benchmark
 
 ```bash
-# Standard benchmark (recommended)
+# Run standard benchmark
 ccmapf batch --config configs/suites/overnight_premium.yaml
 
-# Academic theme with paper-quality figures
+# Run with academic theme (paper-quality figures)
 ccmapf batch --config configs/suites/overnight_academic.yaml
 ```
 
-### 2. Generate Advanced Visualizations
+### Generate Visualizations
 
 ```bash
-# Traffic heatmaps + failure analysis (run on existing results)
+# Generate traffic heatmaps and failure analysis
 python render_advanced_visualizations.py artifacts/runs/{run_id} visualisasi
-```
 
-### 3. Render Showcase
-
-```bash
+# Render showcase (7 PNG + 5 GIF)
 ccmapf render --run artifacts/runs/{run_id} --preset showcase
 ```
 
-## Benchmark Results
+## 📁 Project Structure
 
-### Success Rate by Family
+```
+cc-mapf/
+├── configs/
+│   ├── instances/          # Instance definitions
+│   ├── render/             # Theme and palette presets
+│   └── suites/             # Benchmark suite configurations
+├── src/cc_mapf/
+│   ├── planners/           # MAPF algorithms
+│   │   ├── connected_step.py
+│   │   ├── cbs.py
+│   │   ├── greedy.py
+│   │   └── prioritized.py
+│   ├── render.py           # Visualization engine
+│   ├── experiments.py      # Batch runner
+│   └── validation.py       # Trace validator
+├── artifacts/
+│   └── runs/               # Experiment outputs (not in repo)
+├── render_advanced_visualizations.py
+└── README.md
+```
 
-| Family | Solved / Total | Success Rate |
-|--------|---------------|--------------|
-| formation_shift | 15/15 | **100%** |
-| corridor | 14/15 | **93.3%** |
-| open | 13/15 | **86.7%** |
-| warehouse | 10/15 | **66.7%** |
-
-### Success Rate by Scale
-
-| Scale | Solved / Total | Success Rate |
-|-------|---------------|--------------|
-| 16×16, 4 agents | 20/20 | **100%** |
-| 24×24, 8 agents | 19/20 | **95%** |
-| 32×32, 12 agents | 13/20 | **65%** |
-
-## Visualizations
+## 🎨 Visualization Examples
 
 ### 1. Problem Setup
-![Problem Setup](artifacts/runs/20260409-074900_overnight_premium/showcase/fig01_problem_setup.png)
+Shows initial agent positions (colored circles) with goals (outlined squares) and obstacles (hatched patterns).
 
-*Initial configuration showing 12 agents (colored circles) with their goals (outlined squares). Obstacles rendered with hatch pattern.*
+*Generated with academic theme - DejaVu Serif font, 200 DPI, print-ready*
 
 ### 2. Traffic Density Heatmaps
+Per-family analysis showing congestion hotspots across all instances.
 
-Per-family traffic analysis showing congestion hotspots:
+### 3. Failure Analysis Dashboard
+Comprehensive analysis including:
+- Success vs Failure by Family
+- Success vs Failure by Scale
+- Failure Reasons (timeout, stalled, step_cap)
+- Runtime Distribution
 
-![Failure Analysis](artifacts/runs/20260409-074900_overnight_premium/visualisasi/failure_analysis_dashboard.png)
+### 4. Animated GIFs
+Side-by-side planner comparisons with trail effects:
+- Corridor navigation
+- Warehouse environment
+- Formation shift
+- Open space movement
 
-*Failure analysis dashboard showing success/failure breakdown by family and scale, failure reasons, and runtime distribution.*
+## ⚙️ Configuration
 
-### 3. Animated GIFs
-
-Side-by-side planner comparison dengan trail effects:
-
-| GIF | Description |
-|-----|-------------|
-| `gif01_corridor_compare.gif` | Corridor navigation dengan connectivity constraints |
-| `gif02_warehouse_compare.gif` | Warehouse environment challenge |
-| `gif03_formation_compare.gif` | Formation shift maneuver |
-| `gif04_open_space_connected.gif` | Open space coordinated movement |
-| `gif05_cluster_shift_connected.gif` | Cluster repositioning |
-
-## CLI Reference
-
-### Generate Instances
-
-```bash
-ccmapf generate --config configs/suites/core.yaml
-```
-
-### Solve Single Instance
-
-```bash
-ccmapf solve --config configs/instances/example.yaml --planner connected_step
-```
-
-### Batch Experiments
-
-```bash
-# Run with detached session (survives disconnect)
-./run_enhanced_full_detached.sh
-
-# Or directly
-ccmapf batch --config configs/suites/overnight_premium.yaml
-```
-
-### Render Visualizations
-
-```bash
-# Standard showcase (7 PNG + 5 GIF)
-ccmapf render --run artifacts/runs/{run_id} --preset showcase
-
-# Advanced analysis
-python render_advanced_visualizations.py artifacts/runs/{run_id} visualisasi
-```
-
-## Configuration
-
-### Suite Config Structure
+### Suite Configuration
 
 ```yaml
 name: overnight_premium
@@ -157,6 +129,8 @@ render:
   theme: academic
   palette_preset: academic
   dpi: 200
+  gif_fps: 8
+  interpolation_steps: 4
 ```
 
 ### Available Themes
@@ -165,7 +139,7 @@ render:
 |-------|-------------|
 | `academic` | Paper-quality, DejaVu Serif, hatch patterns |
 | `light` | Clean white background |
-| `dark` | Dark mode with glow effects |
+| `dark` | Dark mode with subtle glow |
 | `cyberpunk` | Neon aesthetic |
 
 ### Available Palettes
@@ -174,40 +148,82 @@ render:
 - `vibrant` - Rainbow colors
 - `ocean` - Blues and teals
 - `forest` - Greens
+- `sunset` - Warm reds/oranges
 - `cyberpunk` - Neon pink/purple/cyan
+- `pastel` - Soft colors
+- `high_contrast` - Accessibility-focused
 
-## Project Structure
+## 📖 Usage Guide
 
-```
-configs/
-├── instances/          # Instance definitions
-├── render/             # Theme and palette presets
-└── suites/             # Benchmark suite configs
+### 1. Generate Instances
 
-src/cc_mapf/
-├── planners/           # MAPF algorithms
-│   ├── connected_step.py
-│   ├── cbs.py
-│   ├── greedy.py
-│   └── prioritized.py
-├── render.py           # Visualization engine
-├── experiments.py      # Batch runner
-└── validation.py       # Trace validator
-
-artifacts/
-└── runs/               # Experiment outputs
-    └── {timestamp}_{suite}/
-        ├── showcase/           # 7 PNG + 5 GIF
-        ├── visualisasi/        # Advanced analysis
-        ├── plans/              # JSON plans
-        ├── instances/          # YAML instances
-        ├── summary.json        # Aggregated metrics
-        └── metrics.csv         # Per-instance data
+```bash
+ccmapf generate --config configs/suites/core.yaml
 ```
 
-## Key Metrics
+### 2. Solve Single Instance
 
-The toolkit tracks comprehensive metrics:
+```bash
+ccmapf solve --config configs/instances/example.yaml --planner connected_step
+```
+
+### 3. Batch Experiments (Detached)
+
+```bash
+# Run in detached tmux session (survives disconnect)
+./run_enhanced_full_detached.sh
+
+# Monitor progress
+tmux attach -t mapf-enhanced
+```
+
+### 4. Advanced Visualizations
+
+```bash
+# Generate heatmaps and analysis
+./run_visualizations_only_detached.sh artifacts/runs/{run_id} visualisasi
+```
+
+## 📊 Output Structure
+
+Each run creates:
+
+```
+artifacts/runs/{timestamp}_{suite}/
+├── showcase/               # 7 PNG figures + 5 GIF animations
+│   ├── fig01_problem_setup.png
+│   ├── fig02_start_configuration.png
+│   ├── fig03_corridor_mid_execution.png
+│   ├── fig04_formation_transition.png
+│   ├── fig05_final_configuration.png
+│   ├── fig06_baseline_vs_connected_panel.png
+│   ├── fig07_benchmark_summary.png
+│   ├── gif01_corridor_compare.gif
+│   ├── gif02_warehouse_compare.gif
+│   ├── gif03_formation_compare.gif
+│   ├── gif04_open_space_connected.gif
+│   └── gif05_cluster_shift_connected.gif
+├── visualisasi/            # Advanced analysis (heatmaps)
+│   ├── heatmap_traffic_{family}.png
+│   ├── failure_analysis_dashboard.png
+│   └── heatmap_failure_positions.png
+├── plans/                  # JSON plan files
+├── instances/              # YAML instance files
+├── summary.json            # Aggregated metrics
+└── metrics.csv             # Per-instance data
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run specific test
+pytest tests/test_planners.py -v
+```
+
+## 📈 Metrics Tracked
 
 - **Success rate** by family and scale
 - **Makespan** (timesteps to reach all goals)
@@ -217,19 +233,47 @@ The toolkit tracks comprehensive metrics:
 - **Connectivity rejections** (constraint enforcement)
 - **Recovery successes** (dead-end escapes)
 
-## Citation
+## 🔬 Algorithm Details
+
+### Connected Step Planner
+
+The main planner uses a **windowed beam search** with:
+- Adaptive beam width based on progress
+- Localized repair for dead-ends
+- Reference trajectory following
+- Connectivity validation at each step
+
+Key features:
+- **Beam width**: 96 (≤8 agents), 48 (>8 agents)
+- **Horizon**: 5 timesteps
+- **Repair depth**: 2 steps
+- **Timeout**: Configurable (default 180s)
+
+## 📝 Citation
 
 If you use this toolkit in your research:
 
 ```bibtex
 @software{cc_mapf,
-  title={Connectivity-Constrained MAPF},
+  title={CC-MAPF: Connectivity-Constrained Multi-Agent Path Finding},
   author={Research Team},
   year={2026},
-  url={https://github.com/your-org/cc_mapf}
+  url={https://github.com/aimldlnlp/cc-mapf}
 }
 ```
 
-## License
+## 📄 License
 
-MIT License - See LICENSE file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
+## 📧 Contact
+
+For questions or support, please open an issue on GitHub.
+
+---
+
+**Note**: Large output files (PNG, GIF, logs) are excluded from the repository via `.gitignore`. Run experiments locally to generate visualizations.
