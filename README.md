@@ -27,100 +27,166 @@ A research-grade Python toolkit for **connectivity-constrained multi-agent path 
 
 ## 🎨 Visualization Gallery
 
-### 1. Problem Setup
+> **Note**: To see actual visualizations, run the experiments and upload images to GitHub (see instructions below).
+
+### Showcase Figures (7 PNG)
+
+#### 1. Problem Setup
 Initial configuration showing agents (colored circles), goals (outlined squares), and obstacles (hatched patterns).
 
-![Problem Setup](https://user-images.githubusercontent.com/placeholder/problem-setup.png)
-*Figure 1: Problem setup for open_32x32_12a instance with 12 agents*
+```
+Location: artifacts/runs/{run_id}/showcase/fig01_problem_setup.png
+```
 
-### 2. Start Configuration
+#### 2. Start Configuration
 Connected team at timestep 0 with connectivity edges shown.
 
-![Start Configuration](https://user-images.githubusercontent.com/placeholder/start-config.png)
-*Figure 2: Start configuration showing initial connected formation*
+```
+Location: artifacts/runs/{run_id}/showcase/fig02_start_configuration.png
+```
 
-### 3. Mid-Execution
+#### 3. Corridor Mid-Execution
 Agents navigating through corridor with maintained connectivity.
 
-![Mid Execution](https://user-images.githubusercontent.com/placeholder/mid-execution.png)
-*Figure 3: Corridor execution at timestep 11*
+```
+Location: artifacts/runs/{run_id}/showcase/fig03_corridor_mid_execution.png
+```
 
-### 4. Formation Transition
+#### 4. Formation Transition
 Dynamic formation shift maneuver with coordinated movement.
 
-![Formation Transition](https://user-images.githubusercontent.com/placeholder/formation.png)
-*Figure 4: Formation transition at midpoint*
+```
+Location: artifacts/runs/{run_id}/showcase/fig04_formation_transition.png
+```
 
-### 5. Final Configuration
+#### 5. Final Configuration
 All agents reached their goals with makespan displayed.
 
-![Final Configuration](https://user-images.githubusercontent.com/placeholder/final.png)
-*Figure 5: Final configuration - all goals reached*
+```
+Location: artifacts/runs/{run_id}/showcase/fig05_final_configuration.png
+```
 
-### 6. Baseline Comparison
-Side-by-side comparison: baseline vs connectivity-aware planner.
+#### 6. Baseline vs Connected Comparison
+Side-by-side comparison showing baseline violations vs connectivity-aware success.
 
-![Baseline Comparison](https://user-images.githubusercontent.com/placeholder/comparison.png)
-*Figure 6: Baseline (left) violates connectivity; Connected step (right) maintains team integrity*
+```
+Location: artifacts/runs/{run_id}/showcase/fig06_baseline_vs_connected_panel.png
+```
 
-### 7. Benchmark Summary
-Aggregated metrics: success rate, makespan, runtime.
+#### 7. Benchmark Summary
+Aggregated performance metrics: success rate, makespan, runtime.
 
-![Benchmark Summary](https://user-images.githubusercontent.com/placeholder/summary.png)
-*Figure 7: Performance summary across all benchmark instances*
+```
+Location: artifacts/runs/{run_id}/showcase/fig07_benchmark_summary.png
+```
 
-## 📈 Advanced Analysis
-
-### Traffic Density Heatmaps
+### Traffic Density Heatmaps (4 PNG)
 
 #### Open Space Family
-![Open Traffic](https://user-images.githubusercontent.com/placeholder/traffic-open.png)
-*Heatmap showing traffic density in open space environments*
+```
+Location: artifacts/runs/{run_id}/visualisasi/heatmap_traffic_open.png
+```
 
 #### Corridor Family
-![Corridor Traffic](https://user-images.githubusercontent.com/placeholder/traffic-corridor.png)
-*Heatmap showing bottleneck areas in corridor navigation*
+```
+Location: artifacts/runs/{run_id}/visualisasi/heatmap_traffic_corridor.png
+```
 
 #### Warehouse Family
-![Warehouse Traffic](https://user-images.githubusercontent.com/placeholder/traffic-warehouse.png)
-*Heatmap showing congestion in warehouse environments*
+```
+Location: artifacts/runs/{run_id}/visualisasi/heatmap_traffic_warehouse.png
+```
 
 #### Formation Shift Family
-![Formation Traffic](https://user-images.githubusercontent.com/placeholder/traffic-formation.png)
-*Heatmap showing movement patterns during formation shifts*
+```
+Location: artifacts/runs/{run_id}/visualisasi/heatmap_traffic_formation_shift.png
+```
 
-### Failure Analysis Dashboard
+### Failure Analysis (2 PNG)
 
-![Failure Analysis](https://user-images.githubusercontent.com/placeholder/failure-analysis.png)
-*Comprehensive failure analysis showing:*
-- *Top-left: Success vs Failure by Family*
-- *Top-right: Success vs Failure by Scale*
-- *Bottom-left: Failure Reasons (timeout, stalled, step_cap)*
-- *Bottom-right: Runtime Distribution*
+#### Failure Analysis Dashboard
+Comprehensive analysis with 4 panels:
+- Success vs Failure by Family
+- Success vs Failure by Scale  
+- Failure Reasons (timeout, stalled, step_cap)
+- Runtime Distribution
 
-### Stuck Position Heatmap
+```
+Location: artifacts/runs/{run_id}/visualisasi/failure_analysis_dashboard.png
+```
 
-![Stuck Positions](https://user-images.githubusercontent.com/placeholder/stuck-positions.png)
-*Heatmap showing where agents get stuck in failed instances*
+#### Stuck Position Heatmap
+Heatmap showing where agents get stuck in failed instances.
 
-## 🎬 Animated Demonstrations
+```
+Location: artifacts/runs/{run_id}/visualisasi/heatmap_failure_positions.png
+```
 
-### GIF 1: Corridor Compare
-Side-by-side comparison of baseline vs connected planner in corridor environment.
+### Animated GIFs (5 GIF)
 
-*Features: Trail effects, timestamp overlay, smooth 8 FPS animation*
+| GIF | Description | Features |
+|-----|-------------|----------|
+| `gif01_corridor_compare.gif` | Corridor navigation comparison | Trail effects, timestamps |
+| `gif02_warehouse_compare.gif` | Warehouse environment | 8 FPS smooth animation |
+| `gif03_formation_compare.gif` | Formation shift maneuver | Side-by-side comparison |
+| `gif04_open_space_connected.gif` | Open space navigation | Connectivity visualization |
+| `gif05_cluster_shift_connected.gif` | Tight cluster repositioning | Dynamic connectivity edges |
 
-### GIF 2: Warehouse Compare
-Navigation through warehouse with narrow passages.
+```
+Location: artifacts/runs/{run_id}/showcase/*.gif
+```
 
-### GIF 3: Formation Compare
-Formation shift maneuver showing coordinated team movement.
+---
 
-### GIF 4: Open Space Connected
-Large open area navigation with connectivity maintenance.
+## 📸 How to Add Visualizations to This README
 
-### GIF 5: Cluster Shift
-Tight cluster repositioning with dynamic connectivity.
+### Step 1: Generate Visualizations
+
+```bash
+# Run experiments
+./run_enhanced_full_detached.sh
+
+# Or generate visualizations from existing run
+./run_visualizations_only_detached.sh artifacts/runs/{run_id} visualisasi
+```
+
+### Step 2: Download Images
+
+Download generated PNG files from:
+- `artifacts/runs/{run_id}/showcase/` (7 PNG + 5 GIF)
+- `artifacts/runs/{run_id}/visualisasi/` (6 PNG)
+
+### Step 3: Upload to GitHub
+
+1. Go to https://github.com/aimldlnlp/cc-mapf/issues
+2. Click "New Issue"
+3. Drag and drop your images into the comment box
+4. Wait for upload to complete
+5. Copy the generated URL (looks like: `https://user-images.githubusercontent.com/...`)
+
+### Step 4: Update README
+
+Replace the placeholder text in this README with actual image URLs:
+
+```markdown
+Before:
+```
+Location: artifacts/runs/{run_id}/showcase/fig01_problem_setup.png
+```
+
+After:
+![Problem Setup](https://user-images.githubusercontent.com/1234567/xxxxxx.png)
+```
+
+### Step 5: Commit and Push
+
+```bash
+git add README.md
+git commit -m "docs: Add visualization images"
+git push origin main
+```
+
+---
 
 ## 🚀 Quick Start
 
@@ -351,10 +417,4 @@ For questions or support, please open an issue on GitHub.
 
 ---
 
-**Note**: Visualizations shown above are representative. Run experiments locally to generate your own figures. Large output files (PNG, GIF, logs) are excluded from the repository via `.gitignore`.
-
-**To add your own visualizations to this README:**
-1. Run experiments: `./run_enhanced_full_detached.sh`
-2. Upload generated PNGs to GitHub issue/comment
-3. Copy the generated URL
-4. Replace placeholder URLs in this README
+**Note**: Large output files (PNG, GIF, logs) are excluded from the repository via `.gitignore`. Run experiments locally to generate visualizations, then upload to GitHub to display in this README.
