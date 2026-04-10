@@ -1,0 +1,70 @@
+# Quick benchmark for testing new planners
+# Smaller instances, fewer configs - runs in ~10-15 minutes
+
+name: benchmark_quick
+description: Quick benchmark for testing (4-8 agents, reduced instances)
+
+base:
+  grid_rows: 32
+  grid_cols: 32
+  connectivity_range: 3.0
+  timeout: 60.0
+  render: false
+
+planners:
+  - connected_step
+  - cc_cbs
+  - prioritized_cc
+  - windowed_cc
+
+instances:
+  # Corridor scenarios - small
+  - template: corridor
+    id: corridor_small_4
+    agents: 4
+    corridor_width: 3
+    corridor_length: 20
+    
+  - template: corridor
+    id: corridor_small_8
+    agents: 8
+    corridor_width: 3
+    corridor_length: 20
+    
+  # Open space - small
+  - template: open
+    id: open_small_4
+    agents: 4
+    obstacle_density: 0.0
+    
+  - template: open
+    id: open_small_8
+    agents: 8
+    obstacle_density: 0.1
+    
+  # Warehouse - small
+  - template: warehouse
+    id: warehouse_small_4
+    agents: 4
+    shelf_density: 0.15
+    
+  - template: warehouse
+    id: warehouse_small_6
+    agents: 6
+    shelf_density: 0.15
+    
+  # Formation shift
+  - template: formation_shift
+    id: formation_small_6
+    agents: 6
+    formation: line_to_cluster
+    
+  - template: formation_shift
+    id: formation_small_8
+    agents: 8
+    formation: line_to_cluster
+
+rendering:
+  theme: academic
+  dpi: 150
+  fps: 8
