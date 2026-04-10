@@ -1,4 +1,4 @@
-name: overnight_academic_enhanced
+name: benchmark_cyberpunk
 families:
   - open
   - corridor
@@ -25,20 +25,20 @@ time_limit_s_by_scale:
 render:
   enabled: true
   preset: showcase
-  font_family: DejaVu Serif
-  font_weight: normal
-  dpi: 150
-  figsize: [6.0, 6.0]
-  # Enhanced animation settings
-  gif_fps: 8                    # Smoother playback
-  interpolation_steps: 4        # Smoother transitions
+  font_family: DejaVu Sans
+  font_weight: bold
+  dpi: 200
+  figsize: [6.5, 6.5]
+  gif_fps: 6
+  interpolation_steps: 4
   show_connectivity_edges: true
-  # Academic theme
-  palette_preset: academic
-  theme: academic
-  glow_effect: false
-  glow_radius: 0
-  agent_size: 0.30
+  # NEW: Cyberpunk neon palette
+  palette_preset: cyberpunk
+  # NEW: Cyberpunk theme
+  theme: cyberpunk
+  glow_effect: true
+  glow_radius: 5
+  agent_size: 0.38
   snapshot_timestep_policy: middle
   annotation_style: minimal
 output_root: artifacts/runs

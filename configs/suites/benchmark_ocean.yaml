@@ -1,4 +1,4 @@
-name: overnight_vibrant
+name: benchmark_ocean
 families:
   - open
   - corridor
@@ -25,17 +25,17 @@ time_limit_s_by_scale:
 render:
   enabled: true
   preset: showcase
-  font_family: DejaVu Sans
-  font_weight: bold
+  font_family: DejaVu Serif
+  font_weight: normal
   dpi: 160
   figsize: [6.0, 6.0]
   gif_fps: 4
   interpolation_steps: 3
   show_connectivity_edges: true
-  # NEW: Vibrant palette
-  palette_preset: vibrant
-  # NEW: Dark theme with glow effects
-  theme: dark
+  # NEW: Ocean palette
+  palette_preset: ocean
+  # NEW: Ocean dark theme
+  theme: ocean_dark
   glow_effect: true
   glow_radius: 3
   agent_size: 0.35

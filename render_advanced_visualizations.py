@@ -328,7 +328,7 @@ def render_advanced_showcase(run_dir: Path, output_name: str = "analysis"):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python render_advanced_visualizations.py <run_directory> [output_folder]")
-        print("Example: python render_advanced_visualizations.py artifacts/runs/20260409-074900_overnight_premium analysis")
+        print("Example: python render_advanced_visualizations.py artifacts/runs/20260409-074900_benchmark_premium analysis")
         sys.exit(1)
     
     run_dir = Path(sys.argv[1])

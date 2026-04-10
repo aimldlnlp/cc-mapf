@@ -239,11 +239,6 @@ def render_showcase(
         or select_record(records, family="open", planner="connected_step")
         or main_record
     )
-    cluster_record = (
-        select_record(records, family="formation_shift", planner="connected_step", min_agents=8)
-        or select_record(records, family="formation_shift", planner="connected_step")
-        or main_record
-    )
     compare_corridor = (
         select_pair(records, family="corridor", min_agents=8)
         or select_pair(records, family="corridor")
@@ -266,7 +261,6 @@ def render_showcase(
     corridor_instance, corridor_states, _ = load_trace(run_path, corridor_record)
     formation_instance, formation_states, _ = load_trace(run_path, formation_record)
     open_instance, open_states, _ = load_trace(run_path, open_record)
-    cluster_instance, cluster_states, _ = load_trace(run_path, cluster_record)
     compare_left_instance, compare_right_instance, compare_states_left, compare_states_right, compare_time = load_compare_trace(run_path, compare_corridor)
     warehouse_left_instance, warehouse_right_instance, warehouse_left, warehouse_right, _ = load_compare_trace(run_path, compare_warehouse)
     formation_left_instance, formation_right_instance, formation_left, formation_right, _ = load_compare_trace(run_path, compare_formation)
@@ -412,10 +406,6 @@ def render_showcase(
     gif04 = showcase_dir / "gif04_open_space_connected.gif"
     render_single_gif(gif04, open_instance, open_states, render_config, title="Open-space connected execution")
     manifest_sources["gif04_open_space_connected.gif"] = source_entry(open_record)
-
-    gif05 = showcase_dir / "gif05_cluster_shift_connected.gif"
-    render_single_gif(gif05, cluster_instance, cluster_states, render_config, title="Cluster-shift connected execution")
-    manifest_sources["gif05_cluster_shift_connected.gif"] = source_entry(cluster_record)
 
     manifest = ShowcaseManifest(run_id=payload["run_id"], sources=manifest_sources)
     dump_json(manifest.to_dict(), showcase_dir / "showcase_manifest.json")

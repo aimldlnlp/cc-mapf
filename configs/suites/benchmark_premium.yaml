@@ -1,4 +1,4 @@
-name: overnight_light_vibrant
+name: benchmark_premium
 families:
   - open
   - corridor
@@ -25,20 +25,22 @@ time_limit_s_by_scale:
 render:
   enabled: true
   preset: showcase
-  font_family: DejaVu Sans
-  font_weight: bold
+  font_family: DejaVu Serif
+  font_weight: normal
   dpi: 160
   figsize: [6.0, 6.0]
   gif_fps: 4
   interpolation_steps: 3
   show_connectivity_edges: true
-  # NEW: Vibrant palette with light theme
-  palette_preset: vibrant
-  # Light theme (no glow)
-  theme: light
-  glow_effect: false
-  glow_radius: 0
-  agent_size: 0.35
+  palette:
+    - "#4C5B61"
+    - "#7D6B57"
+    - "#819A91"
+    - "#A67C52"
+    - "#59788E"
+    - "#B26E63"
+    - "#8E9AAF"
+    - "#7C9885"
   snapshot_timestep_policy: middle
   annotation_style: minimal
 output_root: artifacts/runs

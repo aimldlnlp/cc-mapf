@@ -1,4 +1,4 @@
-name: overnight_enhanced
+name: benchmark_light_vibrant
 families:
   - open
   - corridor
@@ -16,27 +16,29 @@ scales:
     agents: 12
 seeds: [1, 2, 3, 4, 5]
 planners:
-  - enhanced_connected_step  # NEW: Adaptive beam + portfolio + warehouse-opt
-time_limit_s: 300.0  # Increased untuk portfolio attempts
+  - connected_step
+time_limit_s: 180.0
 time_limit_s_by_scale:
-  16x16_4a: 120.0
-  24x24_8a: 300.0
-  32x32_12a: 600.0  # More time untuk large instances
+  16x16_4a: 60.0
+  24x24_8a: 180.0
+  32x32_12a: 360.0
 render:
   enabled: true
   preset: showcase
-  font_family: DejaVu Serif
-  font_weight: normal
-  dpi: 200
+  font_family: DejaVu Sans
+  font_weight: bold
+  dpi: 160
   figsize: [6.0, 6.0]
-  gif_fps: 8
-  interpolation_steps: 4
+  gif_fps: 4
+  interpolation_steps: 3
   show_connectivity_edges: true
-  palette_preset: academic
-  theme: academic
+  # NEW: Vibrant palette with light theme
+  palette_preset: vibrant
+  # Light theme (no glow)
+  theme: light
   glow_effect: false
   glow_radius: 0
-  agent_size: 0.30
+  agent_size: 0.35
   snapshot_timestep_policy: middle
   annotation_style: minimal
 output_root: artifacts/runs

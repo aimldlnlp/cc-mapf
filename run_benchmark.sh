@@ -22,7 +22,7 @@ tmux new-session -d -s mapf-benchmark '
     
     # Phase 1: Run benchmark
     echo "Phase 1: Running benchmark..." | tee -a $LOGFILE
-    .venv/bin/python -m cc_mapf.cli batch --config configs/suites/overnight_premium.yaml 2>&1 | tee -a $LOGFILE
+    .venv/bin/python -m cc_mapf.cli batch --config configs/suites/benchmark_premium.yaml 2>&1 | tee -a $LOGFILE
     
     RUN_DIR=$(ls -1dt artifacts/runs/* | head -1)
     

@@ -1,4 +1,4 @@
-name: overnight_hard_cases
+name: benchmark_hard_cases
 families:
   - open
   - corridor

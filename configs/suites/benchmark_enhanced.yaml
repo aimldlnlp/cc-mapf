@@ -1,4 +1,4 @@
-name: overnight_ultra
+name: benchmark_enhanced
 families:
   - open
   - corridor
@@ -16,32 +16,27 @@ scales:
     agents: 12
 seeds: [1, 2, 3, 4, 5]
 planners:
-  - connected_step
-# Time limits: ultra-aggressive for maximum solve rate
-time_limit_s: 180.0
+  - enhanced_connected_step  # NEW: Adaptive beam + portfolio + warehouse-opt
+time_limit_s: 300.0  # Increased untuk portfolio attempts
 time_limit_s_by_scale:
-  16x16_4a: 60.0      # Easy, keep short
-  24x24_8a: 300.0     # +2 min from 180s for the one failure case
-  32x32_12a: 600.0    # +4 min from 360s for hard warehouse cases
+  16x16_4a: 120.0
+  24x24_8a: 300.0
+  32x32_12a: 600.0  # More time untuk large instances
 render:
   enabled: true
   preset: showcase
   font_family: DejaVu Serif
   font_weight: normal
-  dpi: 160
+  dpi: 200
   figsize: [6.0, 6.0]
-  gif_fps: 4
-  interpolation_steps: 3
+  gif_fps: 8
+  interpolation_steps: 4
   show_connectivity_edges: true
-  palette:
-    - "#4C5B61"
-    - "#7D6B57"
-    - "#819A91"
-    - "#A67C52"
-    - "#59788E"
-    - "#B26E63"
-    - "#8E9AAF"
-    - "#7C9885"
+  palette_preset: academic
+  theme: academic
+  glow_effect: false
+  glow_radius: 0
+  agent_size: 0.30
   snapshot_timestep_policy: middle
   annotation_style: minimal
 output_root: artifacts/runs

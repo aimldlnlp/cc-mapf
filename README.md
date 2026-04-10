@@ -44,7 +44,6 @@ Multi-Agent Path Finding (MAPF) solves the problem of routing multiple agents fr
 | **Corridor** | 93.3% (14/15) | Navigation through narrow passages |
 | **Open Space** | 86.7% (13/15) | Unconstrained movement with connectivity |
 | **Warehouse** | 66.7% (10/15) | Navigation with obstacle-dense environments |
-| **Cluster Shift** | 100% (10/10) | Tight repositioning scenarios |
 | **Overall** | **86.7%** | 52 of 60 instances solved |
 
 ## Traffic Analysis
@@ -86,7 +85,6 @@ Demonstrations of successful connectivity-constrained executions:
 | Scenario | Animation | Description |
 |----------|-----------|-------------|
 | **Open Space** | ![Open Space](docs/assets/open_space.gif) | 12 agents navigating open terrain while maintaining communication |
-| **Cluster Shift** | ![Cluster Shift](docs/assets/cluster_shift.gif) | Tight repositioning with connectivity preservation |
 
 ### Showcase Animations
 
@@ -109,7 +107,7 @@ cd cc-mapf
 python3 -m pip install -e .
 
 # Run benchmark suite
-ccmapf batch --config configs/suites/overnight_premium.yaml
+ccmapf batch --config configs/suites/benchmark_premium.yaml
 
 # Generate visualizations
 python render_advanced_visualizations.py artifacts/runs/{run_id} figures
@@ -126,7 +124,7 @@ ccmapf solve --config configs/instances/small_team.yaml
 ### Batch Evaluation
 
 ```bash
-ccmapf batch --config configs/suites/overnight_premium.yaml
+ccmapf batch --config configs/suites/benchmark_premium.yaml
 ```
 
 ### Generate Visualizations

@@ -1,4 +1,4 @@
-name: overnight_ocean
+name: benchmark_academic
 families:
   - open
   - corridor
@@ -25,20 +25,21 @@ time_limit_s_by_scale:
 render:
   enabled: true
   preset: showcase
+  # Academic/Publication style
   font_family: DejaVu Serif
   font_weight: normal
-  dpi: 160
+  dpi: 300  # Print quality
   figsize: [6.0, 6.0]
   gif_fps: 4
   interpolation_steps: 3
   show_connectivity_edges: true
-  # NEW: Ocean palette
-  palette_preset: ocean
-  # NEW: Ocean dark theme
-  theme: ocean_dark
-  glow_effect: true
-  glow_radius: 3
-  agent_size: 0.35
+  # NEW: Academic palette - CMYK friendly
+  palette_preset: academic
+  # NEW: Academic theme - clean white paper style
+  theme: academic
+  glow_effect: false
+  glow_radius: 0
+  agent_size: 0.30
   snapshot_timestep_policy: middle
   annotation_style: minimal
 output_root: artifacts/runs

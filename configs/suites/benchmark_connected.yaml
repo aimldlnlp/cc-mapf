@@ -1,4 +1,4 @@
-name: overnight_connected
+name: benchmark_connected
 families:
   - open
   - corridor
