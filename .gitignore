@@ -58,11 +58,12 @@ coverage.xml
 *.py,cover
 .hypothesis/
 
-# Large files
+# Large files (except docs/assets for README)
 *.gif
 *.png
 *.jpg
 *.jpeg
+!docs/assets/*.png
 
 # Data files
 *.csv
