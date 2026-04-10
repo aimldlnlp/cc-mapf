@@ -167,19 +167,6 @@ The implementation uses **Connected-Step A/*** with the following features:
 - **Connectivity Check**: Graph connectivity via DFS at each step
 - **Collision Avoidance**: Vertex and edge constraint validation
 
-## Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@software{cc_mapf,
-  title={CC-MAPF: Connectivity-Constrained Multi-Agent Path Finding},
-  author={Research Team},
-  year={2026},
-  url={https://github.com/aimldlnlp/cc-mapf}
-}
-```
-
 ## License
 
 This project is licensed under the MIT License - see the repository for details.
