@@ -300,7 +300,7 @@ def render_failure_position_heatmap(run_dir, failed_records, output_dir):
     print(f"  ✓ heatmap_failure_positions.png")
 
 
-def render_advanced_showcase(run_dir: Path, output_name: str = "visualisasi_advanced"):
+def render_advanced_showcase(run_dir: Path, output_name: str = "analysis"):
     """Render all advanced visualizations."""
     
     run_dir = Path(run_dir)
@@ -328,7 +328,7 @@ def render_advanced_showcase(run_dir: Path, output_name: str = "visualisasi_adva
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python render_advanced_visualizations.py <run_directory> [output_folder]")
-        print("Example: python render_advanced_visualizations.py artifacts/runs/20260409-074900_overnight_premium visualisasi_advanced")
+        print("Example: python render_advanced_visualizations.py artifacts/runs/20260409-074900_overnight_premium analysis")
         sys.exit(1)
     
     run_dir = Path(sys.argv[1])
@@ -336,6 +336,6 @@ if __name__ == "__main__":
         print(f"Error: Directory not found: {run_dir}")
         sys.exit(1)
     
-    output_name = sys.argv[2] if len(sys.argv) > 2 else "visualisasi_advanced"
+    output_name = sys.argv[2] if len(sys.argv) > 2 else "analysis"
     
     render_advanced_showcase(run_dir, output_name)

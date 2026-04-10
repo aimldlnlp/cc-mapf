@@ -112,7 +112,7 @@ python3 -m pip install -e .
 ccmapf batch --config configs/suites/overnight_premium.yaml
 
 # Generate visualizations
-python render_advanced_visualizations.py artifacts/runs/{run_id} visualisasi
+python render_advanced_visualizations.py artifacts/runs/{run_id} figures
 ```
 
 ## Usage
