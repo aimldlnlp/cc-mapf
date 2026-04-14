@@ -2,7 +2,7 @@
 
 Connectivity-Constrained Multi-Agent Path Finding research codebase with benchmark automation, paper-style rendering, and detached experiment runners.
 
-![Success Rate Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/success-rate-heatmap.png)
+![Success Rate Heatmap](docs/paper-bundle/png/success-rate-heatmap.png)
 
 ## Current Status
 
@@ -26,9 +26,10 @@ The only remaining failure in the official best run is `open_24x24_8a_s01`, whic
 
 ## Final Paper Bundle
 
-The README now uses the final curated bundle directly:
+The README now uses assets copied from the final curated bundle so GitHub can render them correctly:
 
-- Bundle path: `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`
+- Source bundle: `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`
+- Published README assets: `docs/paper-bundle/`
 - Validation status: passed
 - Composition: `8` analysis PNG files and `20` GIF files
 - Validation source: `paper_bundle_validation.json`
@@ -37,32 +38,32 @@ The README now uses the final curated bundle directly:
 
 #### Success and Comparison
 
-![Success Rate Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/success-rate-heatmap.png)
-![Comparison Summary](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/comparison-summary.png)
+![Success Rate Heatmap](docs/paper-bundle/png/success-rate-heatmap.png)
+![Comparison Summary](docs/paper-bundle/png/comparison-summary.png)
 
 #### Runtime and Makespan
 
-![Runtime Distribution](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/runtime-distribution.png)
-![Makespan Distribution](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/makespan-distribution.png)
+![Runtime Distribution](docs/paper-bundle/png/runtime-distribution.png)
+![Makespan Distribution](docs/paper-bundle/png/makespan-distribution.png)
 
 #### Connectivity Diagnostics
 
-![Connectivity Rejection Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/connectivity-rejection-heatmap.png)
-![Runtime Success Scatter](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/runtime-success-scatter.png)
+![Connectivity Rejection Heatmap](docs/paper-bundle/png/connectivity-rejection-heatmap.png)
+![Runtime Success Scatter](docs/paper-bundle/png/runtime-success-scatter.png)
 
 #### Map-Aware Analysis
 
-![Flow Atlas](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/flow-atlas.png)
-![Bottleneck Atlas](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/bottleneck-atlas.png)
+![Flow Atlas](docs/paper-bundle/png/flow-atlas.png)
+![Bottleneck Atlas](docs/paper-bundle/png/bottleneck-atlas.png)
 
 ### Representative GIFs
 
 | Asset | Preview |
 | --- | --- |
-| Open 28x28 10-agent hero | ![Open 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__open__28x28_10a.gif) |
-| Corridor 28x28 10-agent hero | ![Corridor 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__corridor__28x28_10a.gif) |
-| Warehouse 28x28 10-agent hero | ![Warehouse 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__warehouse__28x28_10a.gif) |
-| Formation-shift comparison | ![Formation Shift Comparison](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/compare__formation_shift.gif) |
+| Open 28x28 10-agent hero | ![Open 28x28 10-agent](docs/paper-bundle/gif/hero__open__28x28_10a.gif) |
+| Corridor 28x28 10-agent hero | ![Corridor 28x28 10-agent](docs/paper-bundle/gif/hero__corridor__28x28_10a.gif) |
+| Warehouse 28x28 10-agent hero | ![Warehouse 28x28 10-agent](docs/paper-bundle/gif/hero__warehouse__28x28_10a.gif) |
+| Formation-shift comparison | ![Formation Shift Comparison](docs/paper-bundle/gif/compare__formation_shift.gif) |
 
 ## Installation
 
@@ -118,7 +119,7 @@ tmux attach -t cc-paper-rerender
 
 ## Visualization Workflow
 
-The canonical release visuals live in the final paper bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`. The checked-in `docs/media/` directory can still hold supporting media, but the bundle is the source of truth for the paper-ready analysis deck and GIF set.
+The canonical release visuals come from the final paper bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`, and the README-safe published copies live in `docs/paper-bundle/`. The checked-in `docs/media/` directory can still hold supporting media, but `docs/paper-bundle/` is the GitHub-safe subset used by the README.
 
 Render helpers:
 
