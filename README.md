@@ -2,7 +2,7 @@
 
 Connectivity-Constrained Multi-Agent Path Finding research codebase with benchmark automation, paper-style rendering, and detached experiment runners.
 
-![Problem Setup](docs/media/problem-setup.png)
+![Success Rate Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/success-rate-heatmap.png)
 
 ## Current Status
 
@@ -24,23 +24,45 @@ Official best run summary:
 
 The only remaining failure in the official best run is `open_24x24_8a_s01`, which exits on `plateau_limit`.
 
-![Planner Success Matrix](docs/media/planner-success-matrix.png)
-![Failure Reason Breakdown](docs/media/failure-reason-breakdown.png)
+## Final Paper Bundle
 
-## Visual Outputs
+The README now uses the final curated bundle directly:
 
-The documentation visuals are split into two roles:
+- Bundle path: `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`
+- Validation status: passed
+- Composition: `8` analysis PNG files and `20` GIF files
+- Validation source: `paper_bundle_validation.json`
 
-- Static paper-style figures live in `docs/media/` and focus on benchmark summaries, diagnostics, and representative setups.
-- Animated GIFs remain the main medium for showing execution dynamics and planner behavior over time.
+### Analysis Figures
 
-Representative demos:
+#### Success and Comparison
+
+![Success Rate Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/success-rate-heatmap.png)
+![Comparison Summary](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/comparison-summary.png)
+
+#### Runtime and Makespan
+
+![Runtime Distribution](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/runtime-distribution.png)
+![Makespan Distribution](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/makespan-distribution.png)
+
+#### Connectivity Diagnostics
+
+![Connectivity Rejection Heatmap](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/connectivity-rejection-heatmap.png)
+![Runtime Success Scatter](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/runtime-success-scatter.png)
+
+#### Map-Aware Analysis
+
+![Flow Atlas](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/flow-atlas.png)
+![Bottleneck Atlas](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/png/bottleneck-atlas.png)
+
+### Representative GIFs
 
 | Asset | Preview |
 | --- | --- |
-| Corridor showcase | ![Corridor Showcase](docs/media/corridor-showcase.gif) |
-| Open-space connected execution | ![Open Space Connected](docs/media/open-space-connected.gif) |
-| Windowed CC recovery | ![Windowed CC Recovery](docs/media/windowed-cc-recovery-showcase.gif) |
+| Open 28x28 10-agent hero | ![Open 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__open__28x28_10a.gif) |
+| Corridor 28x28 10-agent hero | ![Corridor 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__corridor__28x28_10a.gif) |
+| Warehouse 28x28 10-agent hero | ![Warehouse 28x28 10-agent](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/hero__warehouse__28x28_10a.gif) |
+| Formation-shift comparison | ![Formation Shift Comparison](artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle/gif/compare__formation_shift.gif) |
 
 ## Installation
 
@@ -96,7 +118,7 @@ tmux attach -t cc-paper-rerender
 
 ## Visualization Workflow
 
-Checked-in documentation media lives in `docs/media/`.
+The canonical release visuals live in the final paper bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`. The checked-in `docs/media/` directory can still hold supporting media, but the bundle is the source of truth for the paper-ready analysis deck and GIF set.
 
 Render helpers:
 
