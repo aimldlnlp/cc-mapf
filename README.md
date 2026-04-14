@@ -1,12 +1,12 @@
 # CC-MAPF
 
-Connectivity-Constrained Multi-Agent Path Finding research codebase with benchmark automation, paper-style rendering, and detached experiment runners.
+Connectivity-Constrained Multi-Agent Path Finding research codebase with benchmark automation, visualization tooling, and detached experiment runners.
 
 ![Success Rate Heatmap](docs/paper-bundle/png/success-rate-heatmap.png)
 
 ## Current Status
 
-The repository is currently centered on the 4/6/8/10-agent paper suite using `connected_step` as the best-performing planner on the official benchmark.
+The repository is currently centered on the 4/6/8/10-agent benchmark configuration, with `connected_step` as the best-performing planner on the official benchmark.
 
 Official best run summary:
 
@@ -24,7 +24,7 @@ Official best run summary:
 
 The only remaining failure in the official best run is `open_24x24_8a_s01`, which exits on `plateau_limit`.
 
-## Final Paper Bundle
+## Final Bundle
 
 The README now uses assets copied from the final curated bundle so GitHub can render them correctly:
 
@@ -81,7 +81,7 @@ Run one instance:
 ccmapf solve --config configs/instances/small_team.yaml
 ```
 
-Run the official 4/6/8/10 suite:
+Run the official 4/6/8/10 benchmark:
 
 ```bash
 ccmapf batch --config configs/suites/paper_best_4_6_8_10_official_rerun.yaml
@@ -119,7 +119,7 @@ tmux attach -t cc-paper-rerender
 
 ## Visualization Workflow
 
-The canonical release visuals come from the final paper bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`, and the README-safe published copies live in `docs/paper-bundle/`. The checked-in `docs/media/` directory can still hold supporting media, but `docs/paper-bundle/` is the GitHub-safe subset used by the README.
+The canonical release visuals come from the final bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`, and the README-safe published copies live in `docs/paper-bundle/`. The checked-in `docs/media/` directory can still hold supporting media, but `docs/paper-bundle/` is the GitHub-safe subset used by the README.
 
 Render helpers:
 
@@ -129,7 +129,7 @@ python scripts/render/render_showcase.py artifacts/runs/<run-id> docs/media
 python scripts/render/render_paper_gallery.py artifacts/runs/<run-id> gallery configs/render/paper_gallery.yaml
 ```
 
-The paper bundle renderer currently produces:
+The bundle renderer currently produces:
 
 - `8` analysis PNG files
 - `20` GIF files
