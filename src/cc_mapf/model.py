@@ -160,7 +160,8 @@ class SimulationTrace:
 
 @dataclass
 class RenderConfig:
-    font_family: str = "DejaVu Serif"
+    font_family: str = "CMU Serif"
+    strict_font_family: str = ""
     font_weight: str = "normal"
     dpi: int = 160
     figsize: tuple[float, float] = (6.0, 6.0)
@@ -198,10 +199,23 @@ class RenderConfig:
     agent_edgecolor: str = "#55514B"
     title_color: str = "#2C2C2C"
     subtitle_color: str = "#555555"
+    asset_budget_png: int = 0
+    asset_budget_gif: int = 0
+    hero_families: list[str] = field(default_factory=list)
+    hero_scales: list[str] = field(default_factory=list)
+    hero_png_mode: str = "snapshot"
+    density_marker_mode: str = "goals_only"
+    png_bundle_mode: str = "legacy_hero_pngs"
+    compare_baseline_planner: str = ""
+    final_export_only: bool = False
+
+    def effective_font_family(self) -> str:
+        return self.strict_font_family or self.font_family
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "font_family": self.font_family,
+            "strict_font_family": self.strict_font_family,
             "font_weight": self.font_weight,
             "dpi": self.dpi,
             "figsize": list(self.figsize),
@@ -226,6 +240,15 @@ class RenderConfig:
             "agent_edgecolor": self.agent_edgecolor,
             "title_color": self.title_color,
             "subtitle_color": self.subtitle_color,
+            "asset_budget_png": self.asset_budget_png,
+            "asset_budget_gif": self.asset_budget_gif,
+            "hero_families": list(self.hero_families),
+            "hero_scales": list(self.hero_scales),
+            "hero_png_mode": self.hero_png_mode,
+            "density_marker_mode": self.density_marker_mode,
+            "png_bundle_mode": self.png_bundle_mode,
+            "compare_baseline_planner": self.compare_baseline_planner,
+            "final_export_only": self.final_export_only,
         }
 
     @classmethod
@@ -233,7 +256,8 @@ class RenderConfig:
         data = data or {}
         figsize = tuple(data.get("figsize", (6.0, 6.0)))
         return cls(
-            font_family=str(data.get("font_family", "DejaVu Serif")),
+            font_family=str(data.get("font_family", "CMU Serif")),
+            strict_font_family=str(data.get("strict_font_family", "")),
             font_weight=str(data.get("font_weight", "normal")),
             dpi=int(data.get("dpi", 160)),
             figsize=(float(figsize[0]), float(figsize[1])),
@@ -258,6 +282,15 @@ class RenderConfig:
             agent_edgecolor=str(data.get("agent_edgecolor", "#55514B")),
             title_color=str(data.get("title_color", "#2C2C2C")),
             subtitle_color=str(data.get("subtitle_color", "#555555")),
+            asset_budget_png=int(data.get("asset_budget_png", 0)),
+            asset_budget_gif=int(data.get("asset_budget_gif", 0)),
+            hero_families=[str(item) for item in data.get("hero_families", [])],
+            hero_scales=[str(item) for item in data.get("hero_scales", [])],
+            hero_png_mode=str(data.get("hero_png_mode", "snapshot")),
+            density_marker_mode=str(data.get("density_marker_mode", "goals_only")),
+            png_bundle_mode=str(data.get("png_bundle_mode", "legacy_hero_pngs")),
+            compare_baseline_planner=str(data.get("compare_baseline_planner", "")),
+            final_export_only=bool(data.get("final_export_only", False)),
         )
 
 
@@ -330,9 +363,10 @@ class SuiteConfig:
 class ShowcaseManifest:
     run_id: str
     sources: dict[str, dict[str, Any]]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"run_id": self.run_id, "sources": self.sources}
+        return {"run_id": self.run_id, "sources": self.sources, "metadata": self.metadata}
 
 
 class Planner(Protocol):

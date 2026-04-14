@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+from time import perf_counter
+
+import pytest
+
 from cc_mapf.generator import generate_instance
-from cc_mapf.model import GridMap
+from cc_mapf.model import AgentSpec, ConnectivitySpec, GridMap, Instance
 from cc_mapf.planners import build_planner
 from cc_mapf.planners.connected_step import (
+    ConvoyRescueResult,
+    PlanningContext,
+    attempt_convoy_anchor_rollback_recovery,
+    attempt_convoy_local_dead_end_rescue,
     graph_distance_k_neighbors,
     propose_macro_translation,
+    should_force_ten_agent_local_refine,
     team_radius,
 )
 from cc_mapf.validation import validate_plan
@@ -74,3 +83,136 @@ def test_connected_step_solves_representative_large_formation_case() -> None:
     assert result.status == "solved"
     assert result.plan is not None
     assert validate_plan(instance, result.plan).valid
+
+
+def test_convoy_local_dead_end_rescue_aggressive_prefers_individual_shortest_after_replanned_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    instance = Instance(
+        name="ten_agent_focus",
+        grid=GridMap(8, 8, set()),
+        agents=[
+            AgentSpec(f"r{i:02d}", (i, 1), (i, 3))
+            for i in range(1, 4)
+        ],
+        connectivity=ConnectivitySpec(radius=1),
+    )
+    current_state = tuple(agent.start for agent in instance.agents)
+    goals = tuple(agent.goal for agent in instance.agents)
+    goal_maps = tuple({goal: 0} for goal in goals)
+    context = PlanningContext(
+        agent_ids=[agent.id for agent in instance.agents],
+        start_state=current_state,
+        goals=goals,
+        goal_maps=goal_maps,
+        warm_paths=None,
+        warm_start_status=None,
+        reference_source="replanned_shortest_paths",
+        reference_makespan=4,
+    )
+    seen: dict[str, str | None] = {"preferred_first": None}
+
+    def fake_portfolio(**kwargs):
+        seen["preferred_first"] = kwargs.get("preferred_first")
+        return []
+
+    monkeypatch.setattr(
+        "cc_mapf.planners.connected_step.build_reference_portfolio",
+        fake_portfolio,
+    )
+
+    rescue = attempt_convoy_local_dead_end_rescue(
+        instance=instance,
+        current_state=current_state,
+        goals=goals,
+        goal_maps=goal_maps,
+        agent_ids=context.agent_ids,
+        active_context=context,
+        deadline=perf_counter() + 2.0,
+        aggressive=True,
+    )
+
+    assert rescue.next_state is None
+    assert seen["preferred_first"] == "individual_shortest_paths"
+
+
+def test_anchor_rollback_recovery_returns_progress_when_anchor_rescue_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    instance = Instance(
+        name="anchor_recovery",
+        grid=GridMap(8, 8, set()),
+        agents=[
+            AgentSpec(f"r{i:02d}", (i, 1), (i, 3))
+            for i in range(1, 4)
+        ],
+        connectivity=ConnectivitySpec(radius=1),
+    )
+    anchor_state = tuple(agent.start for agent in instance.agents)
+    next_state = tuple((cell[0], cell[1] + 1) for cell in anchor_state)
+    goals = tuple(agent.goal for agent in instance.agents)
+    goal_maps = tuple({goal: 0} for goal in goals)
+    context = PlanningContext(
+        agent_ids=[agent.id for agent in instance.agents],
+        start_state=anchor_state,
+        goals=goals,
+        goal_maps=goal_maps,
+        warm_paths=None,
+        warm_start_status=None,
+        reference_source="replanned_shortest_paths",
+        reference_makespan=4,
+    )
+
+    def fake_rescue(**kwargs):
+        return ConvoyRescueResult(
+            context=context,
+            next_state=next_state,
+            source_attempts=3,
+            source_successes=1,
+        )
+
+    monkeypatch.setattr(
+        "cc_mapf.planners.connected_step.attempt_convoy_local_dead_end_rescue",
+        fake_rescue,
+    )
+
+    rescue = attempt_convoy_anchor_rollback_recovery(
+        instance=instance,
+        anchor_state=anchor_state,
+        goals=goals,
+        goal_maps=goal_maps,
+        agent_ids=context.agent_ids,
+        active_context=context,
+        deadline=perf_counter() + 2.0,
+        aggressive=True,
+    )
+
+    assert rescue.context is context
+    assert rescue.next_state == next_state
+
+
+def test_ten_agent_recovery_forces_local_refine_after_transport_streak() -> None:
+    assert should_force_ten_agent_local_refine(
+        ten_agent_recovery=True,
+        local_refine_burst_remaining=0,
+        transport_steps=4,
+        no_progress_streak=0,
+    )
+    assert should_force_ten_agent_local_refine(
+        ten_agent_recovery=True,
+        local_refine_burst_remaining=0,
+        transport_steps=3,
+        no_progress_streak=2,
+    )
+    assert not should_force_ten_agent_local_refine(
+        ten_agent_recovery=True,
+        local_refine_burst_remaining=1,
+        transport_steps=4,
+        no_progress_streak=2,
+    )
+    assert not should_force_ten_agent_local_refine(
+        ten_agent_recovery=False,
+        local_refine_burst_remaining=0,
+        transport_steps=4,
+        no_progress_streak=2,
+    )

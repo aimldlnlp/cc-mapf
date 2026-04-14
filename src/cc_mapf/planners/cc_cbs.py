@@ -1,493 +1,318 @@
-#!/usr/bin/env python3
-"""
-CC-CBS: Conflict-Based Search with Connectivity Constraints.
-
-Optimal MAPF planner yang menangani:
-1. Vertex conflicts (dua agent di posisi sama)
-2. Edge conflicts (dua agent swap positions)
-3. Connectivity violations (graph tidak terhubung)
-
-Based on: Sharon, Guni, et al. "Conflict-based search for optimal multi-agent path finding." AAAI 2012.
-Extended dengan connectivity constraints.
-"""
-
 from __future__ import annotations
 
 import heapq
-import time
 from dataclasses import dataclass, field
-from typing import Optional
+from itertools import count
+from time import perf_counter
 
-from ..environment import is_free, neighbors
-from ..model import AgentSpec, GridMap, Instance, Planner, PlannerResult
+from ..connectivity import connectivity_components, position_connected_to_reference, resolve_connectivity_rule
+from ..environment import shortest_path_length
+from ..model import Cell, Instance, Plan, Planner, PlannerResult
+from ..validation import pad_plan, validate_plan
+from .cbs import first_conflict, node_cost
+from .search_common import space_time_a_star
 
 
 @dataclass(frozen=True, order=True)
 class VertexConstraint:
-    """Constraint: agent cannot be at (pos) at timestep."""
     agent_id: str = field(compare=False)
-    pos: tuple[int, int] = field(compare=False)
+    pos: Cell = field(compare=False)
     timestep: int
 
 
 @dataclass(frozen=True, order=True)
 class EdgeConstraint:
-    """Constraint: agent cannot move from pos1 to pos2 at timestep."""
     agent_id: str = field(compare=False)
-    pos_from: tuple[int, int] = field(compare=False)
-    pos_to: tuple[int, int] = field(compare=False)
+    pos_from: Cell = field(compare=False)
+    pos_to: Cell = field(compare=False)
     timestep: int
 
 
 @dataclass
 class ConstraintSet:
-    """Kumpulan constraint untuk satu CT node."""
     vertex: set[VertexConstraint] = field(default_factory=set)
     edge: set[EdgeConstraint] = field(default_factory=set)
-    
+
     def copy(self) -> ConstraintSet:
-        return ConstraintSet(
-            vertex=set(self.vertex),
-            edge=set(self.edge)
-        )
-    
-    def add_vertex(self, agent_id: str, pos: tuple[int, int], timestep: int):
+        return ConstraintSet(vertex=set(self.vertex), edge=set(self.edge))
+
+    def add_vertex(self, agent_id: str, pos: Cell, timestep: int) -> None:
         self.vertex.add(VertexConstraint(agent_id, pos, timestep))
-    
-    def add_edge(self, agent_id: str, pos_from: tuple[int, int], 
-                 pos_to: tuple[int, int], timestep: int):
+
+    def add_edge(self, agent_id: str, pos_from: Cell, pos_to: Cell, timestep: int) -> None:
         self.edge.add(EdgeConstraint(agent_id, pos_from, pos_to, timestep))
+
+    def vertex_constraints_for(self, agent_id: str) -> set[tuple[Cell, int]]:
+        return {
+            (constraint.pos, constraint.timestep)
+            for constraint in self.vertex
+            if constraint.agent_id == agent_id
+        }
+
+    def edge_constraints_for(self, agent_id: str) -> set[tuple[Cell, Cell, int]]:
+        return {
+            (constraint.pos_from, constraint.pos_to, constraint.timestep)
+            for constraint in self.edge
+            if constraint.agent_id == agent_id
+        }
+
+    def signature(self) -> tuple[tuple[tuple[str, Cell, int], ...], tuple[tuple[str, Cell, Cell, int], ...]]:
+        vertex = tuple(
+            sorted((constraint.agent_id, constraint.pos, constraint.timestep) for constraint in self.vertex)
+        )
+        edge = tuple(
+            sorted((constraint.agent_id, constraint.pos_from, constraint.pos_to, constraint.timestep) for constraint in self.edge)
+        )
+        return vertex, edge
 
 
 @dataclass
 class CTNode:
-    """
-    Constraint Tree Node.
-    
-    Attributes:
-        constraints: Set of constraints untuk semua agents
-        paths: Dictionary agent_id -> list of positions (path)
-        cost: Total cost (makespan atau sum of costs)
-    """
     constraints: ConstraintSet
-    paths: dict[str, list[tuple[int, int]]]
-    cost: float
-    
-    def __lt__(self, other: CTNode) -> bool:
-        return self.cost < other.cost
+    paths: Plan
 
 
 class CCCBSPlanner(Planner):
-    """
-    Conflict-Based Search with Connectivity Constraints.
-    
-    Usage:
-        planner = CCCBSPlanner()
-        result = planner.solve(instance, time_limit_s=300.0)
-    """
-    
     name: str = "cc_cbs"
-    
-    def __init__(self, connectivity_range: float = 3.0,
-                 cost_type: str = "makespan"):
-        """
-        Args:
-            connectivity_range: Maximum distance untuk connectivity
-            cost_type: "makespan" or "sum_costs"
-        """
+
+    def __init__(self, connectivity_range: float | None = None, cost_type: str = "makespan"):
         self.connectivity_range = connectivity_range
         self.cost_type = cost_type
-        
+
     def solve(self, instance: Instance, time_limit_s: float = 300.0) -> PlannerResult:
-        """
-        Run CC-CBS algorithm.
-        
-        Returns:
-            PlannerResult dengan status, plan, dan metadata
-        """
-        start_time = time.time()
-        grid = instance.grid
-        agents = instance.agents
-        agent_ids = [a.id for a in agents]
-        agent_map = {a.id: a for a in agents}
-        
-        # Root node: empty constraints, individual paths
+        start_time = perf_counter()
+        optimistic = max((shortest_path_length(instance.grid, agent.start, agent.goal) or 0) for agent in instance.agents)
+        horizon = max(16, optimistic + instance.grid.width * instance.grid.height // 2 + len(instance.agents) * 4)
         root_constraints = ConstraintSet()
-        root_paths: dict[str, list[tuple[int, int]]] = {}
-        
-        for agent in agents:
-            path = self._low_level_search(agent, instance, root_constraints)
-            if path is None:
+        root_paths: Plan = {}
+        expanded_nodes = 0
+        connectivity_rejections = 0
+        for agent in instance.agents:
+            search_result = self._low_level_search(agent.id, instance, root_constraints, max_time=horizon)
+            if search_result is None:
                 return PlannerResult(
-                    status="failure",
+                    status="failed",
                     plan=None,
-                    runtime_s=time.time() - start_time,
-                    expanded_nodes=0,
-                    connectivity_rejections=0
+                    runtime_s=perf_counter() - start_time,
+                    expanded_nodes=expanded_nodes,
+                    connectivity_rejections=connectivity_rejections,
+                    metadata={"planner": self.name, "failed_agent": agent.id},
                 )
+            path, expanded, rejected = search_result
             root_paths[agent.id] = path
-        
-        root_cost = self._compute_cost(root_paths)
-        root_node = CTNode(root_constraints, root_paths, root_cost)
-        
-        # Priority queue untuk CT
-        open_list: list[tuple[float, int, CTNode]] = []
-        counter = 0
-        heapq.heappush(open_list, (root_cost, counter, root_node))
-        counter += 1
-        
-        nodes_expanded = 0
-        
-        while open_list and (time.time() - start_time) < time_limit_s:
-            _, _, current = heapq.heappop(open_list)
-            nodes_expanded += 1
-            
-            # Check conflicts
-            conflict = self._find_conflict(current.paths)
-            if conflict is None:
-                # Check connectivity
-                violation = self._find_connectivity_violation(current.paths)
-                if violation is None:
-                    # Valid solution found!
-                    return PlannerResult(
-                        status="success",
-                        plan=current.paths,
-                        runtime_s=time.time() - start_time,
-                        expanded_nodes=nodes_expanded,
-                        connectivity_rejections=0
-                    )
-                else:
-                    # Split by connectivity violation
-                    children = self._split_connectivity(
-                        current, violation, instance
-                    )
+            expanded_nodes += expanded
+            connectivity_rejections += rejected
+        queue: list[tuple[tuple[int, int, int, int], int, CTNode]] = []
+        ticket = count()
+        root = CTNode(constraints=root_constraints, paths=root_paths)
+        heapq.heappush(queue, (self._priority(root), next(ticket), root))
+        seen = {root_constraints.signature()}
+        high_level_expansions = 0
+        while queue:
+            if perf_counter() - start_time > time_limit_s:
+                return PlannerResult(
+                    status="timeout",
+                    plan=None,
+                    runtime_s=perf_counter() - start_time,
+                    expanded_nodes=expanded_nodes + high_level_expansions,
+                    connectivity_rejections=connectivity_rejections,
+                    metadata={"planner": self.name},
+                )
+            _, _, node = heapq.heappop(queue)
+            high_level_expansions += 1
+            conflict = first_conflict(instance, node.paths)
+            if conflict is not None:
+                children = self._split_conflict(node, conflict, instance, horizon)
             else:
-                # Split by conflict
-                children = self._split_conflict(current, conflict, instance)
-            
-            # Add children to open list
-            for child in children:
-                heapq.heappush(open_list, (child.cost, counter, child))
-                counter += 1
-        
-        if not open_list:
-            return PlannerResult(
-                status="failure",
-                plan=None,
-                runtime_s=time.time() - start_time,
-                expanded_nodes=nodes_expanded,
-                connectivity_rejections=0
-            )
-        else:
-            return PlannerResult(
-                status="timeout",
-                plan=None,
-                runtime_s=time.time() - start_time,
-                expanded_nodes=nodes_expanded,
-                connectivity_rejections=0
-            )
-    
-    def _low_level_search(self, agent: AgentSpec, instance: Instance,
-                         constraints: ConstraintSet) -> Optional[list[tuple[int, int]]]:
-        """
-        A* search untuk single agent dengan constraints.
-        
-        Returns:
-            Path sebagai list of positions, atau None jika tidak ada path
-        """
-        grid = instance.grid
-        start = agent.start
-        goal = agent.goal
-        
-        # A* dengan temporal constraints
-        open_set: list[tuple[float, int, tuple[int, int], int]] = []
-        heapq.heappush(open_set, (0.0, 0, start, 0))
-        
-        g_score: dict[tuple[tuple[int, int], int], float] = {(start, 0): 0.0}
-        came_from: dict[tuple[tuple[int, int], int], tuple[tuple[int, int], int]] = {}
-        counter = 1
-        
-        max_timestep = 500  # Prevent infinite search
-        
-        while open_set:
-            _, _, pos, timestep = heapq.heappop(open_set)
-            
-            if timestep > max_timestep:
-                continue
-            
-            # Check goal
-            if pos == goal:
-                # Reconstruct path
-                path = [pos]
-                current_key = (pos, timestep)
-                while current_key in came_from:
-                    current_key = came_from[current_key]
-                    path.append(current_key[0])
-                path.reverse()
-                return path
-            
-            # Expand neighbors
-            current_g = g_score.get((pos, timestep), float('inf'))
-            
-            for neighbor in neighbors(grid, pos, include_wait=True):
-                new_timestep = timestep + 1
-                
-                # Check vertex constraint
-                if VertexConstraint(agent.id, neighbor, new_timestep) in constraints.vertex:
+                violation = self._find_connectivity_violation(instance, node.paths)
+                if violation is None:
+                    validation = validate_plan(instance, node.paths)
+                    if validation.valid:
+                        return PlannerResult(
+                            status="solved",
+                            plan=node.paths,
+                            runtime_s=perf_counter() - start_time,
+                            expanded_nodes=expanded_nodes + high_level_expansions,
+                            connectivity_rejections=connectivity_rejections,
+                            metadata={"planner": self.name, "cost_type": self.cost_type},
+                        )
+                    return PlannerResult(
+                        status="failed",
+                        plan=node.paths,
+                        runtime_s=perf_counter() - start_time,
+                        expanded_nodes=expanded_nodes + high_level_expansions,
+                        connectivity_rejections=connectivity_rejections,
+                        metadata={"planner": self.name, "reason": "validation_failed"},
+                    )
+                children = self._split_connectivity(node, violation, instance, horizon)
+            for child, child_expanded, child_connectivity_rejections in children:
+                expanded_nodes += child_expanded
+                connectivity_rejections += child_connectivity_rejections
+                signature = child.constraints.signature()
+                if signature in seen:
                     continue
-                
-                # Check edge constraint
-                if EdgeConstraint(agent.id, pos, neighbor, new_timestep) in constraints.edge:
-                    continue
-                
-                # Check if neighbor is valid (not obstacle)
-                if not is_free(grid, neighbor):
-                    continue
-                
-                tentative_g = current_g + 1
-                neighbor_key = (neighbor, new_timestep)
-                
-                if tentative_g < g_score.get(neighbor_key, float('inf')):
-                    came_from[neighbor_key] = (pos, timestep)
-                    g_score[neighbor_key] = tentative_g
-                    
-                    # Heuristic: Manhattan distance
-                    h = abs(neighbor[0] - goal[0]) + abs(neighbor[1] - goal[1])
-                    f = tentative_g + h
-                    
-                    heapq.heappush(open_set, (f, counter, neighbor, new_timestep))
-                    counter += 1
-        
+                seen.add(signature)
+                heapq.heappush(queue, (self._priority(child), next(ticket), child))
+        return PlannerResult(
+            status="failed",
+            plan=None,
+            runtime_s=perf_counter() - start_time,
+            expanded_nodes=expanded_nodes + high_level_expansions,
+            connectivity_rejections=connectivity_rejections,
+            metadata={"planner": self.name},
+        )
+
+    def _low_level_search(
+        self,
+        agent_id: str,
+        instance: Instance,
+        constraints: ConstraintSet,
+        *,
+        reference_paths: Plan | None = None,
+        max_time: int,
+    ) -> tuple[list[Cell], int, int] | None:
+        agent = next(agent for agent in instance.agents if agent.id == agent_id)
+        mode, radius = resolve_connectivity_rule(instance.connectivity, radius=self.connectivity_range)
+        rejected_here = 0
+
+        def state_validator(cell: Cell, time_index: int) -> bool:
+            nonlocal rejected_here
+            if not position_connected_to_reference(
+                cell,
+                time_index,
+                reference_paths or {},
+                mode=mode,
+                radius=radius,
+            ):
+                rejected_here += 1
+                return False
+            return True
+
+        result = space_time_a_star(
+            instance.grid,
+            agent.start,
+            agent.goal,
+            vertex_constraints=constraints.vertex_constraints_for(agent_id),
+            edge_constraints=constraints.edge_constraints_for(agent_id),
+            state_validator=state_validator if reference_paths else None,
+            max_time=max_time,
+        )
+        if result is None:
+            return None
+        path, expanded = result
+        return path, expanded, rejected_here
+
+    def _find_connectivity_violation(self, instance: Instance, paths: Plan) -> dict[str, object] | None:
+        padded, _ = pad_plan(instance, paths)
+        horizon = max((len(path) for path in padded.values()), default=0)
+        mode, radius = resolve_connectivity_rule(instance.connectivity, radius=self.connectivity_range)
+        for time_index in range(horizon):
+            positions = {agent.id: padded[agent.id][time_index] for agent in instance.agents}
+            components = connectivity_components(positions, mode=mode, radius=radius)
+            if len(components) > 1:
+                ordered = sorted(components, key=lambda component: (-len(component), component))
+                return {"time": time_index, "components": ordered}
         return None
-    
-    def _find_conflict(self, paths: dict[str, list[tuple[int, int]]]
-                      ) -> Optional[dict]:
-        """
-        Find first conflict antara dua agents.
-        
-        Returns:
-            Dict dengan keys: 'type', 'agent1', 'agent2', 'pos', 'timestep'
-            atau None jika tidak ada conflict
-        """
-        agent_ids = list(paths.keys())
-        max_timestep = max(len(p) for p in paths.values())
-        
-        for t in range(max_timestep):
-            # Check vertex conflicts
-            positions: dict[tuple[int, int], list[str]] = {}
-            for aid in agent_ids:
-                pos = paths[aid][min(t, len(paths[aid]) - 1)]
-                if pos not in positions:
-                    positions[pos] = []
-                positions[pos].append(aid)
-            
-            for pos, aids_at_pos in positions.items():
-                if len(aids_at_pos) > 1:
-                    return {
-                        'type': 'vertex',
-                        'agent1': aids_at_pos[0],
-                        'agent2': aids_at_pos[1],
-                        'pos': pos,
-                        'timestep': t
-                    }
-            
-            # Check edge conflicts (swap)
-            if t > 0:
-                for i, aid1 in enumerate(agent_ids):
-                    for aid2 in agent_ids[i+1:]:
-                        pos1_prev = paths[aid1][min(t-1, len(paths[aid1]) - 1)]
-                        pos1_curr = paths[aid1][min(t, len(paths[aid1]) - 1)]
-                        pos2_prev = paths[aid2][min(t-1, len(paths[aid2]) - 1)]
-                        pos2_curr = paths[aid2][min(t, len(paths[aid2]) - 1)]
-                        
-                        if pos1_prev == pos2_curr and pos1_curr == pos2_prev:
-                            return {
-                                'type': 'edge',
-                                'agent1': aid1,
-                                'agent2': aid2,
-                                'pos1': pos1_prev,
-                                'pos2': pos1_curr,
-                                'timestep': t
-                            }
-        
-        return None
-    
-    def _find_connectivity_violation(self, paths: dict[str, list[tuple[int, int]]]
-                                    ) -> Optional[dict]:
-        """
-        Check apakah connectivity graph terhubung di semua timesteps.
-        
-        Returns:
-            Dict dengan keys: 'timestep', 'disconnected_agents'
-            atau None jika terhubung
-        """
-        agent_ids = list(paths.keys())
-        max_timestep = max(len(p) for p in paths.values())
-        
-        for t in range(max_timestep):
-            # Build connectivity graph pada timestep t
-            positions = {
-                aid: paths[aid][min(t, len(paths[aid]) - 1)]
-                for aid in agent_ids
-            }
-            
-            # Check connectivity via BFS
-            if len(agent_ids) <= 1:
-                continue
-            
-            visited = set()
-            queue = [agent_ids[0]]
-            visited.add(agent_ids[0])
-            
-            while queue:
-                current = queue.pop(0)
-                current_pos = positions[current]
-                
-                for other in agent_ids:
-                    if other in visited:
-                        continue
-                    other_pos = positions[other]
-                    dist = ((current_pos[0] - other_pos[0]) ** 2 + 
-                           (current_pos[1] - other_pos[1]) ** 2) ** 0.5
-                    
-                    if dist <= self.connectivity_range:
-                        visited.add(other)
-                        queue.append(other)
-            
-            if len(visited) != len(agent_ids):
-                disconnected = [a for a in agent_ids if a not in visited]
-                return {
-                    'timestep': t,
-                    'disconnected_agents': disconnected,
-                    'connected_component': list(visited)
-                }
-        
-        return None
-    
-    def _split_conflict(self, node: CTNode, conflict: dict, 
-                       instance: Instance) -> list[CTNode]:
-        """
-        Split CT node berdasarkan conflict.
-        
-        Returns:
-            List of child CT nodes
-        """
-        children = []
-        
-        if conflict['type'] == 'vertex':
-            agent1 = conflict['agent1']
-            agent2 = conflict['agent2']
-            pos = conflict['pos']
-            timestep = conflict['timestep']
-            
-            # Child 1: agent1 cannot be at pos at timestep
-            child1 = self._create_child_node(
-                node, agent1, 'vertex', pos, timestep, instance
-            )
-            if child1:
-                children.append(child1)
-            
-            # Child 2: agent2 cannot be at pos at timestep
-            child2 = self._create_child_node(
-                node, agent2, 'vertex', pos, timestep, instance
-            )
-            if child2:
-                children.append(child2)
-        
-        elif conflict['type'] == 'edge':
-            agent1 = conflict['agent1']
-            agent2 = conflict['agent2']
-            pos1 = conflict['pos1']
-            pos2 = conflict['pos2']
-            timestep = conflict['timestep']
-            
-            # Child 1: agent1 cannot move pos1->pos2 at timestep
-            child1 = self._create_child_node(
-                node, agent1, 'edge', pos1, timestep, instance, pos2
-            )
-            if child1:
-                children.append(child1)
-            
-            # Child 2: agent2 cannot move pos2->pos1 at timestep
-            child2 = self._create_child_node(
-                node, agent2, 'edge', pos2, timestep, instance, pos1
-            )
-            if child2:
-                children.append(child2)
-        
+
+    def _split_conflict(
+        self,
+        node: CTNode,
+        conflict: dict,
+        instance: Instance,
+        horizon: int,
+    ) -> list[tuple[CTNode, int, int]]:
+        children: list[tuple[CTNode, int, int]] = []
+        if conflict["type"] == "vertex":
+            for agent_id in conflict["agents"]:
+                child = self._replan_agent(
+                    node,
+                    agent_id,
+                    instance,
+                    horizon,
+                    vertex_constraint=(tuple(conflict["cell"]), int(conflict["time"])),
+                )
+                if child is not None:
+                    children.append(child)
+            return children
+        if conflict["type"] == "swap":
+            for agent_id in conflict["agents"]:
+                edge = conflict["edge_by_agent"][agent_id]
+                child = self._replan_agent(
+                    node,
+                    agent_id,
+                    instance,
+                    horizon,
+                    edge_constraint=(tuple(edge[0]), tuple(edge[1]), int(conflict["time"]) - 1),
+                )
+                if child is not None:
+                    children.append(child)
         return children
-    
-    def _split_connectivity(self, node: CTNode, violation: dict,
-                           instance: Instance) -> list[CTNode]:
-        """
-        Split CT node berdasarkan connectivity violation.
-        
-        Strategy: Force disconnected agents to move toward connected component.
-        """
-        children = []
-        timestep = violation['timestep']
-        disconnected = violation['disconnected_agents']
-        connected = violation['connected_component']
-        
-        # For each disconnected agent, add constraint to move toward connected agents
-        for agent_id in disconnected:
-            # Find agent object
-            agent = None
-            for a in instance.agents:
-                if a.id == agent_id:
-                    agent = a
-                    break
-            
-            if agent is None:
-                continue
-            
-            # Add constraint: agent harus stay di posisi saat ini (temporary constraint)
-            # Ini adalah simplifikasi - seharusnya lebih sophisticated
-            child = self._create_child_node(
-                node, agent_id, 'vertex', agent.start, timestep, instance
+
+    def _split_connectivity(
+        self,
+        node: CTNode,
+        violation: dict[str, object],
+        instance: Instance,
+        horizon: int,
+    ) -> list[tuple[CTNode, int, int]]:
+        components = violation["components"]
+        assert isinstance(components, list)
+        time_index = int(violation["time"])
+        primary_component = set(components[0])
+        children: list[tuple[CTNode, int, int]] = []
+        for agent_id in sorted(agent.id for agent in instance.agents if agent.id not in primary_component):
+            offending_cell = node.paths[agent_id][min(time_index, len(node.paths[agent_id]) - 1)]
+            reference_paths = {other_id: node.paths[other_id] for other_id in primary_component}
+            child = self._replan_agent(
+                node,
+                agent_id,
+                instance,
+                horizon,
+                vertex_constraint=(offending_cell, time_index),
+                reference_paths=reference_paths,
             )
-            if child:
+            if child is not None:
                 children.append(child)
-        
-        return children if children else [node]
-    
-    def _create_child_node(self, parent: CTNode, agent_id: str,
-                          constraint_type: str, pos, timestep: int,
-                          instance: Instance, pos_to=None) -> Optional[CTNode]:
-        """Create child CT node dengan constraint baru."""
-        # Copy constraints
-        new_constraints = parent.constraints.copy()
-        
-        if constraint_type == 'vertex':
-            new_constraints.add_vertex(agent_id, pos, timestep)
-        elif constraint_type == 'edge':
-            new_constraints.add_edge(agent_id, pos, pos_to, timestep)
-        
-        # Find agent object
-        agent = None
-        for a in instance.agents:
-            if a.id == agent_id:
-                agent = a
-                break
-        
-        if agent is None:
+        return children
+
+    def _replan_agent(
+        self,
+        node: CTNode,
+        agent_id: str,
+        instance: Instance,
+        horizon: int,
+        *,
+        vertex_constraint: tuple[Cell, int] | None = None,
+        edge_constraint: tuple[Cell, Cell, int] | None = None,
+        reference_paths: Plan | None = None,
+    ) -> tuple[CTNode, int, int] | None:
+        constraints = node.constraints.copy()
+        if vertex_constraint is not None:
+            cell, time_index = vertex_constraint
+            constraints.add_vertex(agent_id, cell, time_index)
+        if edge_constraint is not None:
+            from_cell, to_cell, time_index = edge_constraint
+            constraints.add_edge(agent_id, from_cell, to_cell, time_index)
+        effective_references = reference_paths or {
+            other_id: path for other_id, path in node.paths.items() if other_id != agent_id
+        }
+        search_result = self._low_level_search(
+            agent_id,
+            instance,
+            constraints,
+            reference_paths=effective_references,
+            max_time=horizon,
+        )
+        if search_result is None:
             return None
-        
-        # Replan untuk agent yang terkena constraint
-        new_paths = dict(parent.paths)
-        new_path = self._low_level_search(agent, instance, new_constraints)
-        
-        if new_path is None:
-            return None
-        
-        new_paths[agent_id] = new_path
-        
-        new_cost = self._compute_cost(new_paths)
-        return CTNode(new_constraints, new_paths, new_cost)
-    
-    def _compute_cost(self, paths: dict[str, list[tuple[int, int]]]) -> float:
-        """Compute cost berdasarkan cost_type."""
-        if self.cost_type == "makespan":
-            return float(max(len(p) for p in paths.values()))
-        else:  # sum_costs
-            return float(sum(len(p) for p in paths.values()))
+        path, expanded, rejected = search_result
+        new_paths = {key: list(value) for key, value in node.paths.items()}
+        new_paths[agent_id] = path
+        return CTNode(constraints=constraints, paths=new_paths), expanded, rejected
+
+    def _priority(self, node: CTNode) -> tuple[int, int, int, int]:
+        base = node_cost(node.paths)
+        penalty = len(node.constraints.vertex) + len(node.constraints.edge)
+        if self.cost_type == "sum_costs":
+            return base[1], base[0], base[2], penalty
+        return base[0], base[1], base[2], penalty

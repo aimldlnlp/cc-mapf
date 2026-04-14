@@ -58,12 +58,12 @@ coverage.xml
 *.py,cover
 .hypothesis/
 
-# Large files (except docs/assets for README)
+# Large files (except docs/media for README)
 # *.gif  # Allow GIFs for README demonstrations
 *.png
 *.jpg
 *.jpeg
-!docs/assets/*.png
+!docs/media/*.png
 
 # Data files
 *.csv
@@ -73,6 +73,9 @@ coverage.xml
 !configs/**/*.json
 
 # Artifacts (keep structure but not large files)
+artifacts/logs/
+artifacts/paper_rollouts/
+artifacts/paper-rollouts/
 artifacts/runs/*
 !artifacts/runs/.gitkeep
 artifacts/generated/*

@@ -1,0 +1,21 @@
+name: benchmark_windowed_cc_warehouse_32_focus
+families:
+  - warehouse
+scales:
+  - width: 32
+    height: 32
+    agents: 12
+seeds: [1, 2, 3, 4, 5]
+planners:
+  - windowed_cc
+time_limit_s: 360.0
+time_limit_s_by_scale:
+  32x32_12a: 360.0
+render:
+  enabled: false
+  preset: showcase
+  font_family: CMU Serif
+  font_weight: normal
+  dpi: 160
+  theme: academic
+output_root: artifacts/runs

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import defaultdict
 from typing import Any
 
-from .environment import DIRECTIONS4, in_bounds, is_free, manhattan
+from .connectivity import connectivity_components as compute_connectivity_components
+from .environment import DIRECTIONS4, in_bounds, is_free
 from .model import Cell, Instance, Plan, ValidationResult
 
 
@@ -48,32 +49,13 @@ def states_from_plan(plan: Plan) -> list[dict[str, Cell]]:
     return states
 
 
-def connectivity_components(positions: dict[str, Cell]) -> list[list[str]]:
-    if not positions:
-        return []
-    adjacency: dict[str, set[str]] = {agent_id: set() for agent_id in positions}
-    agent_items = list(positions.items())
-    for index, (agent_a, cell_a) in enumerate(agent_items):
-        for agent_b, cell_b in agent_items[index + 1 :]:
-            if manhattan(cell_a, cell_b) == 1:
-                adjacency[agent_a].add(agent_b)
-                adjacency[agent_b].add(agent_a)
-    components: list[list[str]] = []
-    unseen = set(positions)
-    while unseen:
-        seed = next(iter(unseen))
-        queue = deque([seed])
-        component: list[str] = []
-        unseen.remove(seed)
-        while queue:
-            current = queue.popleft()
-            component.append(current)
-            for nxt in sorted(adjacency[current]):
-                if nxt in unseen:
-                    unseen.remove(nxt)
-                    queue.append(nxt)
-        components.append(sorted(component))
-    return components
+def connectivity_components(
+    positions: dict[str, Cell],
+    *,
+    mode: str = "adjacency",
+    radius: int = 1,
+) -> list[list[str]]:
+    return compute_connectivity_components(positions, mode=mode, radius=radius)
 
 
 def validate_state(instance: Instance, positions: dict[str, Cell], time_index: int) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
@@ -91,7 +73,11 @@ def validate_state(instance: Instance, positions: dict[str, Cell], time_index: i
         if len(agents_here) > 1:
             vertex_conflicts.append({"time": time_index, "cell": list(cell), "agents": sorted(agents_here)})
     connectivity_failures: list[dict[str, Any]] = []
-    components = connectivity_components(positions)
+    components = connectivity_components(
+        positions,
+        mode=instance.connectivity.mode,
+        radius=instance.connectivity.radius,
+    )
     if len(components) > 1:
         connectivity_failures.append({"time": time_index, "components": components})
     return move_failures, vertex_conflicts, connectivity_failures

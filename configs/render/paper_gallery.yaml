@@ -1,0 +1,14 @@
+font_family: CMU Serif
+font_weight: normal
+dpi: 220
+figsize: [6.8, 6.8]
+gif_fps: 6
+interpolation_steps: 4
+show_connectivity_edges: true
+snapshot_timestep_policy: middle
+annotation_style: minimal
+theme: academic
+palette_preset: academic
+glow_effect: false
+glow_radius: 0
+agent_size: 0.30

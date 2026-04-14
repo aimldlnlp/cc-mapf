@@ -43,7 +43,7 @@ def test_batch_command_writes_metrics_and_showcase_bundle(tmp_path: Path) -> Non
         "render": {
             "enabled": True,
             "preset": "showcase",
-            "font_family": "DejaVu Serif",
+            "font_family": "CMU Serif",
             "font_weight": "normal",
         },
         "output_root": str(tmp_path / "runs"),
@@ -68,6 +68,11 @@ def test_batch_command_writes_metrics_and_showcase_bundle(tmp_path: Path) -> Non
             "candidate_prunes",
             "disconnected_state_prunes",
             "reference_source",
+            "reference_portfolio_source",
+            "reference_budget_s",
+            "reference_attempt_sequence",
+            "reference_rebuilds",
+            "reference_execution_policy",
             "transport_steps",
             "local_refine_steps",
             "macro_expansions",
@@ -86,11 +91,44 @@ def test_batch_command_writes_metrics_and_showcase_bundle(tmp_path: Path) -> Non
             "best_progress_step",
             "steps_since_last_progress",
             "stall_exit_reason",
+            "window_mode",
+            "window_failures",
+            "reference_prefix_steps",
+            "local_success_windows",
+            "fallback_windows",
+            "fallback_progress_resets",
+            "guide_bridge_attempts",
+            "guide_bridge_successes",
+            "guide_bridge_max_offset",
+            "guide_bridge_progress_resets",
+            "guide_frontier_shrinks",
+            "stall_recovery_uses",
+            "fallback_progress_mode",
         ]:
             assert column in reader.fieldnames
     showcase_dir = run_dir / "showcase"
-    assert len(list(showcase_dir.glob("*.png"))) == 7
+    assert len(list(showcase_dir.glob("*.png"))) == 11
     assert len(list(showcase_dir.glob("*.gif"))) == 5
+    for name in [
+        "problem-setup.png",
+        "start-configuration.png",
+        "corridor-mid-execution.png",
+        "formation-transition.png",
+        "final-configuration.png",
+        "baseline-vs-connected-panel.png",
+        "benchmark-summary.png",
+        "planner-success-matrix.png",
+        "failure-reason-breakdown.png",
+        "windowed-cc-reference-portfolio.png",
+        "windowed-cc-progress-timeline.png",
+        "corridor-comparison.gif",
+        "warehouse-comparison.gif",
+        "formation-comparison.gif",
+        "open-space-connected.gif",
+        "windowed-cc-recovery-showcase.gif",
+    ]:
+        assert (showcase_dir / name).exists()
+    assert not any(path.name.startswith(("fig0", "gif0")) for path in showcase_dir.iterdir())
     assert (showcase_dir / "showcase_manifest.json").exists()
 
 

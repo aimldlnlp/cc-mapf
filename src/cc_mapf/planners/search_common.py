@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import heapq
+from collections.abc import Callable
 from itertools import count
 
 from ..environment import manhattan, neighbors
@@ -16,6 +17,8 @@ def space_time_a_star(
     edge_constraints: set[tuple[Cell, Cell, int]] | None = None,
     reserved_vertices: set[tuple[Cell, int]] | None = None,
     reserved_edges: set[tuple[Cell, Cell, int]] | None = None,
+    state_validator: Callable[[Cell, int], bool] | None = None,
+    transition_validator: Callable[[Cell, Cell, int], bool] | None = None,
     max_time: int = 128,
 ) -> tuple[list[Cell], int] | None:
     vertex_constraints = vertex_constraints or set()
@@ -23,6 +26,8 @@ def space_time_a_star(
     reserved_vertices = reserved_vertices or set()
     reserved_edges = reserved_edges or set()
     if (start, 0) in vertex_constraints or (start, 0) in reserved_vertices:
+        return None
+    if state_validator is not None and not state_validator(start, 0):
         return None
     queue: list[tuple[int, int, int, Cell, int]] = []
     ticket = count()
@@ -47,6 +52,10 @@ def space_time_a_star(
             if (cell, nxt, time_index) in edge_constraints:
                 continue
             if (nxt, cell, time_index) in reserved_edges:
+                continue
+            if transition_validator is not None and not transition_validator(cell, nxt, time_index):
+                continue
+            if state_validator is not None and not state_validator(nxt, next_time):
                 continue
             next_state = (nxt, next_time)
             next_cost = g_cost + 1

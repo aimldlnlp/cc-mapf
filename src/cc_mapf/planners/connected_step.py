@@ -105,6 +105,15 @@ class ConvoyRescueResult:
 class ConnectedStepPlanner:
     name = "connected_step"
 
+    def __init__(
+        self,
+        *,
+        initial_reference_mode: str | None = None,
+        initial_warm_path_policy: str = "auto",
+    ) -> None:
+        self.initial_reference_mode = initial_reference_mode
+        self.initial_warm_path_policy = initial_warm_path_policy
+
     def solve(self, instance: Instance, time_limit_s: float) -> PlannerResult:
         exact_budget = min(time_limit_s, 10.0)
         if len(instance.agents) <= 4 and instance.grid.width * instance.grid.height <= 256:
@@ -113,21 +122,48 @@ class ConnectedStepPlanner:
             if exact_result.status == "solved" or exact_result.runtime_s >= time_limit_s:
                 return exact_result
             remaining = max(0.1, time_limit_s - exact_result.runtime_s)
-            fallback = windowed_beam_solve(instance, remaining)
+            fallback = windowed_beam_solve(
+                instance,
+                remaining,
+                initial_reference_mode=self.initial_reference_mode,
+                initial_warm_path_policy=self.initial_warm_path_policy,
+            )
             fallback.runtime_s += exact_result.runtime_s
             fallback.expanded_nodes = (fallback.expanded_nodes or 0) + (exact_result.expanded_nodes or 0)
             fallback.connectivity_rejections += exact_result.connectivity_rejections
             fallback.metadata["warm_start_status"] = exact_result.status
             return fallback
         if len(instance.agents) >= 10:
-            return convoy_macro_beam_solve(instance, time_limit_s)
-        return windowed_beam_solve(instance, time_limit_s)
+            return convoy_macro_beam_solve(
+                instance,
+                time_limit_s,
+                initial_reference_mode=self.initial_reference_mode,
+                initial_warm_path_policy=self.initial_warm_path_policy,
+            )
+        return windowed_beam_solve(
+            instance,
+            time_limit_s,
+            initial_reference_mode=self.initial_reference_mode,
+            initial_warm_path_policy=self.initial_warm_path_policy,
+        )
 
 
-def windowed_beam_solve(instance: Instance, time_limit_s: float) -> PlannerResult:
+def windowed_beam_solve(
+    instance: Instance,
+    time_limit_s: float,
+    *,
+    initial_reference_mode: str | None = None,
+    initial_warm_path_policy: str = "auto",
+) -> PlannerResult:
     start_time = perf_counter()
     deadline = start_time + time_limit_s
-    context = build_planning_context(instance, time_limit_s, large_mode=False)
+    context = build_planning_context(
+        instance,
+        time_limit_s,
+        large_mode=False,
+        preferred_reference_mode=initial_reference_mode,
+        warm_path_policy=initial_warm_path_policy,
+    )
     active_context = context
     beam_horizon = 5 if len(context.agent_ids) <= 8 else 3
     beam_width = 96 if len(context.agent_ids) <= 8 else 48
@@ -457,10 +493,22 @@ def windowed_beam_solve(instance: Instance, time_limit_s: float) -> PlannerResul
     )
 
 
-def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerResult:
+def convoy_macro_beam_solve(
+    instance: Instance,
+    time_limit_s: float,
+    *,
+    initial_reference_mode: str | None = None,
+    initial_warm_path_policy: str = "auto",
+) -> PlannerResult:
     start_time = perf_counter()
     deadline = start_time + time_limit_s
-    context = build_planning_context(instance, time_limit_s, large_mode=True)
+    context = build_planning_context(
+        instance,
+        time_limit_s,
+        large_mode=True,
+        preferred_reference_mode=initial_reference_mode,
+        warm_path_policy=initial_warm_path_policy,
+    )
     source_portfolio_attempts = 0
     source_portfolio_successes = 0
     active_context = context
@@ -495,9 +543,14 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
     recovery_attempts_in_basin = 0
     consecutive_failed_recoveries = 0
     stall_exit_reason = ""
+    ten_agent_recovery = len(context.agent_ids) == 10
+    ten_agent_focus = ten_agent_recovery
+    max_basin_restarts = 5 if ten_agent_focus else 3
     max_steps = max(
-        320,
-        context.reference_makespan + 4 * (instance.grid.width + instance.grid.height) + 6 * len(context.agent_ids),
+        440 if ten_agent_focus else 320,
+        context.reference_makespan
+        + (5 if ten_agent_focus else 4) * (instance.grid.width + instance.grid.height)
+        + (8 if ten_agent_focus else 6) * len(context.agent_ids),
     )
     while len(states) - 1 < max_steps:
         steps_since_last_progress = (len(states) - 1) - best_progress_step
@@ -585,8 +638,18 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
             horizon=5,
             prefer_group_bias=False,
         )
-        force_cycle_break = no_progress_streak >= 8 or consecutive_failed_recoveries >= 2
+        force_cycle_break = no_progress_streak >= (6 if ten_agent_focus else 8) or consecutive_failed_recoveries >= (
+            1 if ten_agent_focus else 2
+        )
+        force_local_refine = should_force_ten_agent_local_refine(
+            ten_agent_recovery=ten_agent_recovery,
+            local_refine_burst_remaining=local_refine_burst_remaining,
+            transport_steps=transport_steps,
+            no_progress_streak=no_progress_streak,
+        )
         use_transport = (
+            not force_local_refine
+            and
             local_refine_burst_remaining == 0
             and (centroid_distance(current_state, active_context.goals) > team_radius(current_state) + 2 or force_cycle_break)
         )
@@ -645,6 +708,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         agent_ids=context.agent_ids,
                         active_context=active_context,
                         deadline=deadline,
+                        aggressive=ten_agent_focus,
                     )
                     source_portfolio_attempts += rescue.source_attempts
                     source_portfolio_successes += rescue.source_successes
@@ -675,6 +739,99 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         else:
                             local_refine_steps += 1
                             last_transport_delta = None
+                        continue
+                    if (
+                        ten_agent_focus
+                        and best_state_index < len(states) - 1
+                        and basin_restarts < max_basin_restarts
+                        and deadline - perf_counter() > 1.0
+                    ):
+                        anchor_rescue = attempt_convoy_anchor_rollback_recovery(
+                            instance=instance,
+                            anchor_state=states[best_state_index],
+                            goals=context.goals,
+                            goal_maps=context.goal_maps,
+                            agent_ids=context.agent_ids,
+                            active_context=active_context,
+                            deadline=deadline,
+                            aggressive=True,
+                        )
+                        source_portfolio_attempts += anchor_rescue.source_attempts
+                        source_portfolio_successes += anchor_rescue.source_successes
+                        expanded_nodes += anchor_rescue.expanded_nodes
+                        candidate_prunes += anchor_rescue.candidate_prunes
+                        disconnected_state_prunes += anchor_rescue.disconnected_state_prunes
+                        macro_expansions += anchor_rescue.macro_expansions
+                        macro_successes += anchor_rescue.macro_successes
+                        active_subset_total += anchor_rescue.active_subset_total
+                        active_subset_samples += anchor_rescue.active_subset_samples
+                        if anchor_rescue.next_state is not None and anchor_rescue.context is not None:
+                            previous_source = active_context.reference_source
+                            active_context = anchor_rescue.context
+                            basin_restart_source = active_context.reference_source
+                            basin_restarts += 1
+                            reference_switch_count += int(active_context.reference_source != previous_source)
+                            recovery_successes += 1
+                            wait_streak = 0
+                            no_progress_streak = 0
+                            recovery_attempts_in_basin = 0
+                            consecutive_failed_recoveries = 0
+                            local_refine_burst_remaining = max(local_refine_burst_remaining, 10)
+                            states = states[: best_state_index + 1]
+                            states.append(anchor_rescue.next_state)
+                            current_state = anchor_rescue.next_state
+                            if anchor_rescue.used_transport:
+                                transport_steps += 1
+                            else:
+                                local_refine_steps += 1
+                                last_transport_delta = None
+                            continue
+                    if (
+                        ten_agent_focus
+                        and basin_restarts < max_basin_restarts
+                        and best_state_index < len(states) - 1
+                        and deadline - perf_counter() > 1.0
+                    ):
+                        anchor_index = best_state_index
+                        previous_source = active_context.reference_source
+                        restart_portfolio = build_reference_portfolio(
+                            instance=instance,
+                            current_state=states[anchor_index],
+                            goals=context.goals,
+                            goal_maps=context.goal_maps,
+                            agent_ids=context.agent_ids,
+                            time_limit_s=max(0.5, deadline - perf_counter()),
+                            preferred_first=choose_reference_mode(
+                                active_context.reference_source,
+                                offset=basin_restarts + 1,
+                            ),
+                        )
+                        source_portfolio_attempts += len(restart_portfolio)
+                        active_context = min(
+                            restart_portfolio,
+                            key=lambda item: (
+                                item.reference_source == active_context.reference_source,
+                                score_planning_context(
+                                    instance=instance,
+                                    current_state=states[anchor_index],
+                                    goals=context.goals,
+                                    goal_maps=context.goal_maps,
+                                    context=item,
+                                ),
+                            ),
+                        )
+                        source_portfolio_successes += int(active_context.reference_source != previous_source)
+                        states = states[: anchor_index + 1]
+                        current_state = states[-1]
+                        wait_streak = 0
+                        no_progress_streak = 0
+                        recovery_attempts_in_basin = 0
+                        consecutive_failed_recoveries = 0
+                        local_refine_burst_remaining = max(local_refine_burst_remaining, 8)
+                        last_transport_delta = None
+                        basin_restarts += 1
+                        basin_restart_source = active_context.reference_source
+                        reference_switch_count += int(active_context.reference_source != previous_source)
                         continue
                     return build_result(
                         status="failed",
@@ -720,19 +877,20 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     local_refine_burst_remaining = max(local_refine_burst_remaining, 3)
         else:
             used_local_refine = True
-            adaptive_refine = no_progress_streak >= 6
+            adaptive_refine = no_progress_streak >= (4 if ten_agent_focus else 6)
             search = search_window(
                 instance=instance,
                 current_state=current_state,
                 goals=context.goals,
                 goal_maps=context.goal_maps,
                 reference_trajectory=reference_trajectory,
-                beam_horizon=6 if (adaptive_refine or local_refine_burst_remaining > 0) else 5,
-                beam_width=128 if (adaptive_refine or local_refine_burst_remaining > 0) else 96,
-                candidate_cap=4 if (adaptive_refine or local_refine_burst_remaining > 0) else 3,
-                partial_limit=96 if (adaptive_refine or local_refine_burst_remaining > 0) else 64,
+                beam_horizon=7 if ten_agent_focus and (adaptive_refine or local_refine_burst_remaining > 0) else (6 if (adaptive_refine or local_refine_burst_remaining > 0) else 5),
+                beam_width=160 if ten_agent_focus and (adaptive_refine or local_refine_burst_remaining > 0) else (128 if (adaptive_refine or local_refine_burst_remaining > 0) else 96),
+                candidate_cap=5 if ten_agent_focus and (adaptive_refine or local_refine_burst_remaining > 0) else (4 if (adaptive_refine or local_refine_burst_remaining > 0) else 3),
+                partial_limit=128 if ten_agent_focus and (adaptive_refine or local_refine_burst_remaining > 0) else (96 if (adaptive_refine or local_refine_burst_remaining > 0) else 64),
                 deadline=deadline,
                 support_agents=None,
+                diversify=ten_agent_focus and adaptive_refine,
             )
             expanded_nodes += search.expanded_nodes
             candidate_prunes += search.candidate_prunes
@@ -746,11 +904,12 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     goals=context.goals,
                     goal_maps=context.goal_maps,
                     reference_trajectory=reference_trajectory,
-                    beam_width=40 if adaptive_refine else 24,
-                    candidate_cap=4 if adaptive_refine else 3,
-                    depth=3 if adaptive_refine else 2,
+                    beam_width=56 if ten_agent_focus and adaptive_refine else (40 if adaptive_refine else 24),
+                    candidate_cap=5 if ten_agent_focus and adaptive_refine else (4 if adaptive_refine else 3),
+                    depth=4 if ten_agent_focus and adaptive_refine else (3 if adaptive_refine else 2),
                     deadline=deadline,
-                    support_limit=8 if adaptive_refine else 6,
+                    support_limit=10 if ten_agent_focus and adaptive_refine else (8 if adaptive_refine else 6),
+                    diversify=ten_agent_focus and adaptive_refine,
                 )
                 expanded_nodes += repair.expanded_nodes
                 candidate_prunes += repair.candidate_prunes
@@ -769,6 +928,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         agent_ids=context.agent_ids,
                         active_context=active_context,
                         deadline=deadline,
+                        aggressive=ten_agent_focus,
                     )
                     source_portfolio_attempts += rescue.source_attempts
                     source_portfolio_successes += rescue.source_successes
@@ -799,6 +959,99 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         else:
                             local_refine_steps += 1
                             last_transport_delta = None
+                        continue
+                    if (
+                        ten_agent_focus
+                        and best_state_index < len(states) - 1
+                        and basin_restarts < max_basin_restarts
+                        and deadline - perf_counter() > 1.0
+                    ):
+                        anchor_rescue = attempt_convoy_anchor_rollback_recovery(
+                            instance=instance,
+                            anchor_state=states[best_state_index],
+                            goals=context.goals,
+                            goal_maps=context.goal_maps,
+                            agent_ids=context.agent_ids,
+                            active_context=active_context,
+                            deadline=deadline,
+                            aggressive=True,
+                        )
+                        source_portfolio_attempts += anchor_rescue.source_attempts
+                        source_portfolio_successes += anchor_rescue.source_successes
+                        expanded_nodes += anchor_rescue.expanded_nodes
+                        candidate_prunes += anchor_rescue.candidate_prunes
+                        disconnected_state_prunes += anchor_rescue.disconnected_state_prunes
+                        macro_expansions += anchor_rescue.macro_expansions
+                        macro_successes += anchor_rescue.macro_successes
+                        active_subset_total += anchor_rescue.active_subset_total
+                        active_subset_samples += anchor_rescue.active_subset_samples
+                        if anchor_rescue.next_state is not None and anchor_rescue.context is not None:
+                            previous_source = active_context.reference_source
+                            active_context = anchor_rescue.context
+                            basin_restart_source = active_context.reference_source
+                            basin_restarts += 1
+                            reference_switch_count += int(active_context.reference_source != previous_source)
+                            recovery_successes += 1
+                            wait_streak = 0
+                            no_progress_streak = 0
+                            recovery_attempts_in_basin = 0
+                            consecutive_failed_recoveries = 0
+                            local_refine_burst_remaining = max(local_refine_burst_remaining, 10)
+                            states = states[: best_state_index + 1]
+                            states.append(anchor_rescue.next_state)
+                            current_state = anchor_rescue.next_state
+                            if anchor_rescue.used_transport:
+                                transport_steps += 1
+                            else:
+                                local_refine_steps += 1
+                                last_transport_delta = None
+                            continue
+                    if (
+                        ten_agent_focus
+                        and basin_restarts < max_basin_restarts
+                        and best_state_index < len(states) - 1
+                        and deadline - perf_counter() > 1.0
+                    ):
+                        anchor_index = best_state_index
+                        previous_source = active_context.reference_source
+                        restart_portfolio = build_reference_portfolio(
+                            instance=instance,
+                            current_state=states[anchor_index],
+                            goals=context.goals,
+                            goal_maps=context.goal_maps,
+                            agent_ids=context.agent_ids,
+                            time_limit_s=max(0.5, deadline - perf_counter()),
+                            preferred_first=choose_reference_mode(
+                                active_context.reference_source,
+                                offset=basin_restarts + 1,
+                            ),
+                        )
+                        source_portfolio_attempts += len(restart_portfolio)
+                        active_context = min(
+                            restart_portfolio,
+                            key=lambda item: (
+                                item.reference_source == active_context.reference_source,
+                                score_planning_context(
+                                    instance=instance,
+                                    current_state=states[anchor_index],
+                                    goals=context.goals,
+                                    goal_maps=context.goal_maps,
+                                    context=item,
+                                ),
+                            ),
+                        )
+                        source_portfolio_successes += int(active_context.reference_source != previous_source)
+                        states = states[: anchor_index + 1]
+                        current_state = states[-1]
+                        wait_streak = 0
+                        no_progress_streak = 0
+                        recovery_attempts_in_basin = 0
+                        consecutive_failed_recoveries = 0
+                        local_refine_burst_remaining = max(local_refine_burst_remaining, 8)
+                        last_transport_delta = None
+                        basin_restarts += 1
+                        basin_restart_source = active_context.reference_source
+                        reference_switch_count += int(active_context.reference_source != previous_source)
                         continue
                     return build_result(
                         status="failed",
@@ -869,12 +1122,12 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
             no_progress_streak += 1
             time_remaining = deadline - perf_counter()
             early_stalled = no_progress_streak >= 8 and best_progress_step > 0 and steps_since_last_progress <= 12
-            recovery_budget_exhausted = recovery_attempts_in_basin >= 3 or (
-                recovery_attempts_in_basin >= 2 and time_remaining < max(4.0, time_limit_s * 0.15)
+            recovery_budget_exhausted = recovery_attempts_in_basin >= (4 if ten_agent_focus else 3) or (
+                recovery_attempts_in_basin >= (3 if ten_agent_focus else 2) and time_remaining < max(4.0, time_limit_s * 0.15)
             )
             if (
                 (early_stalled or recovery_budget_exhausted or consecutive_failed_recoveries >= 2)
-                and basin_restarts < 3
+                and basin_restarts < max_basin_restarts
                 and best_state_index < len(states) - 1
                 and time_remaining > 0.75
             ):
@@ -909,14 +1162,14 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                 wait_streak = 0
                 no_progress_streak = 0
                 last_transport_delta = None
-                local_refine_burst_remaining = max(local_refine_burst_remaining, 5)
+                local_refine_burst_remaining = max(local_refine_burst_remaining, 7 if ten_agent_focus else 5)
                 recovery_attempts_in_basin = 0
                 consecutive_failed_recoveries = 0
                 basin_restarts += 1
                 basin_restart_source = active_context.reference_source
                 reference_switch_count += int(active_context.reference_source != previous_source)
                 continue
-            if no_progress_streak >= 10 and best_state_index < len(states) - 1 and time_remaining > 0.75:
+            if no_progress_streak >= (8 if ten_agent_focus else 10) and best_state_index < len(states) - 1 and time_remaining > 0.75:
                 recovery_attempts_in_basin += 1
                 escape_move_invocations += 1
                 anchor_state = states[best_state_index]
@@ -930,7 +1183,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     horizon=6,
                     prefer_group_bias=True,
                 )
-                aggressive_recovery = deadline - perf_counter() > 2.0
+                aggressive_recovery = ten_agent_focus or deadline - perf_counter() > 2.0
                 recovery = search_window(
                     instance=instance,
                     current_state=anchor_state,
@@ -943,6 +1196,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     partial_limit=96 if aggressive_recovery else 64,
                     deadline=deadline,
                     support_agents=None,
+                    diversify=ten_agent_focus,
                 )
                 expanded_nodes += recovery.expanded_nodes
                 candidate_prunes += recovery.candidate_prunes
@@ -962,6 +1216,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         depth=3 if aggressive_recovery else 2,
                         deadline=deadline,
                         support_limit=8 if aggressive_recovery else 6,
+                        diversify=ten_agent_focus,
                     )
                     expanded_nodes += repair.expanded_nodes
                     candidate_prunes += repair.candidate_prunes
@@ -997,7 +1252,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     wait_streak = 0
                     no_progress_streak = 0
                     recovery_successes += 1
-                    local_refine_burst_remaining = max(local_refine_burst_remaining, 6)
+                    local_refine_burst_remaining = max(local_refine_burst_remaining, 8 if ten_agent_focus else 6)
                     consecutive_failed_recoveries = 0
                     if recovered_by_transport:
                         transport_steps += 1
@@ -1005,7 +1260,7 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                         local_refine_steps += 1
                     continue
                 consecutive_failed_recoveries += 1
-            if no_progress_streak >= 18:
+            if no_progress_streak >= (24 if ten_agent_focus else 18):
                 stall_exit_reason = "basin_stalled" if best_progress_step > 0 else "early_stall"
                 return build_result(
                     status="failed",
@@ -1044,6 +1299,54 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
                     stall_exit_reason=stall_exit_reason,
                     reason="stalled",
                 )
+        if (
+            ten_agent_focus
+            and len(states) - 1 >= max_steps - 1
+            and best_state_index < len(states) - 1
+            and basin_restarts < max_basin_restarts
+            and deadline - perf_counter() > 1.0
+        ):
+            anchor_rescue = attempt_convoy_anchor_rollback_recovery(
+                instance=instance,
+                anchor_state=states[best_state_index],
+                goals=context.goals,
+                goal_maps=context.goal_maps,
+                agent_ids=context.agent_ids,
+                active_context=active_context,
+                deadline=deadline,
+                aggressive=True,
+            )
+            source_portfolio_attempts += anchor_rescue.source_attempts
+            source_portfolio_successes += anchor_rescue.source_successes
+            expanded_nodes += anchor_rescue.expanded_nodes
+            candidate_prunes += anchor_rescue.candidate_prunes
+            disconnected_state_prunes += anchor_rescue.disconnected_state_prunes
+            macro_expansions += anchor_rescue.macro_expansions
+            macro_successes += anchor_rescue.macro_successes
+            active_subset_total += anchor_rescue.active_subset_total
+            active_subset_samples += anchor_rescue.active_subset_samples
+            if anchor_rescue.next_state is not None and anchor_rescue.context is not None:
+                previous_source = active_context.reference_source
+                active_context = anchor_rescue.context
+                basin_restart_source = active_context.reference_source
+                basin_restarts += 1
+                reference_switch_count += int(active_context.reference_source != previous_source)
+                recovery_successes += 1
+                wait_streak = 0
+                no_progress_streak = 0
+                recovery_attempts_in_basin = 0
+                consecutive_failed_recoveries = 0
+                local_refine_burst_remaining = max(local_refine_burst_remaining, 10)
+                states = states[: best_state_index + 1]
+                states.append(anchor_rescue.next_state)
+                current_state = anchor_rescue.next_state
+                max_steps += 96
+                if anchor_rescue.used_transport:
+                    transport_steps += 1
+                else:
+                    local_refine_steps += 1
+                    last_transport_delta = None
+                continue
     return build_result(
         status="failed",
         agent_ids=active_context.agent_ids,
@@ -1083,12 +1386,30 @@ def convoy_macro_beam_solve(instance: Instance, time_limit_s: float) -> PlannerR
     )
 
 
-def build_planning_context(instance: Instance, time_limit_s: float, *, large_mode: bool) -> PlanningContext:
+def build_planning_context(
+    instance: Instance,
+    time_limit_s: float,
+    *,
+    large_mode: bool,
+    preferred_reference_mode: str | None = None,
+    warm_path_policy: str = "auto",
+) -> PlanningContext:
     agents = sorted(instance.agents, key=lambda item: (-manhattan(item.start, item.goal), item.id))
     agent_ids = [agent.id for agent in agents]
     goals = tuple(agent.goal for agent in agents)
     goal_maps = tuple(reverse_distance_map(instance.grid, goal) for goal in goals)
     warm_budget = min(1.5 if large_mode else 2.5, max(1.0, time_limit_s * 0.1))
+    if preferred_reference_mode is not None or warm_path_policy != "auto":
+        return build_restart_context(
+            instance=instance,
+            current_state=tuple(agent.start for agent in agents),
+            goals=goals,
+            goal_maps=goal_maps,
+            agent_ids=agent_ids,
+            reference_mode=preferred_reference_mode or "prioritized",
+            time_limit_s=warm_budget,
+            warm_path_policy=warm_path_policy,
+        )
     warm_start = PrioritizedPlanner().solve(instance, warm_budget)
     warm_paths: tuple[tuple[Cell, ...], ...] | None = None
     reference_makespan = 0
@@ -1119,12 +1440,16 @@ def build_restart_context(
     agent_ids: list[str],
     reference_mode: str,
     time_limit_s: float,
+    warm_path_policy: str = "auto",
 ) -> PlanningContext:
     warm_paths: tuple[tuple[Cell, ...], ...] | None = None
     warm_start_status: str | None = None
     reference_source = "individual_shortest_paths"
     reference_makespan = 0
-    if reference_mode == "prioritized":
+    policy = warm_path_policy if warm_path_policy in {"auto", "prioritized_only", "replanned_only", "disabled"} else "auto"
+    allow_prioritized = reference_mode == "prioritized" and policy in {"auto", "prioritized_only"}
+    allow_replanned = reference_mode in {"replanned_shortest_paths", "prioritized"} and policy in {"auto", "replanned_only"}
+    if allow_prioritized:
         restart_instance = Instance(
             name=f"{instance.name}_restart",
             grid=instance.grid,
@@ -1145,7 +1470,7 @@ def build_restart_context(
             )
             reference_makespan = max((len(path) - 1 for path in warm_paths), default=0)
             reference_source = "prioritized"
-    if warm_paths is None and reference_mode in {"replanned_shortest_paths", "prioritized"}:
+    if warm_paths is None and allow_replanned:
         replanned_paths = build_individual_shortest_reference_paths(instance, current_state, goals)
         if replanned_paths is not None:
             warm_paths = replanned_paths
@@ -1232,6 +1557,59 @@ def score_planning_context(
     )
 
 
+def should_force_ten_agent_local_refine(
+    *,
+    ten_agent_recovery: bool,
+    local_refine_burst_remaining: int,
+    transport_steps: int,
+    no_progress_streak: int,
+) -> bool:
+    if not ten_agent_recovery or local_refine_burst_remaining > 0:
+        return False
+    if transport_steps > 0 and transport_steps % 4 == 0:
+        return True
+    return transport_steps >= 2 and no_progress_streak >= 2
+
+
+def attempt_convoy_anchor_rollback_recovery(
+    *,
+    instance: Instance,
+    anchor_state: JointState,
+    goals: JointState,
+    goal_maps: tuple[dict[Cell, int], ...],
+    agent_ids: list[str],
+    active_context: PlanningContext,
+    deadline: float,
+    aggressive: bool = False,
+) -> ConvoyRescueResult:
+    rescue = attempt_convoy_local_dead_end_rescue(
+        instance=instance,
+        current_state=anchor_state,
+        goals=goals,
+        goal_maps=goal_maps,
+        agent_ids=agent_ids,
+        active_context=active_context,
+        deadline=deadline,
+        aggressive=aggressive,
+    )
+    if rescue.next_state is None or rescue.context is None or rescue.next_state == anchor_state:
+        return ConvoyRescueResult(
+            context=None,
+            next_state=None,
+            expanded_nodes=rescue.expanded_nodes,
+            candidate_prunes=rescue.candidate_prunes,
+            disconnected_state_prunes=rescue.disconnected_state_prunes,
+            macro_expansions=rescue.macro_expansions,
+            macro_successes=rescue.macro_successes,
+            active_subset_total=rescue.active_subset_total,
+            active_subset_samples=rescue.active_subset_samples,
+            used_transport=rescue.used_transport,
+            source_attempts=rescue.source_attempts,
+            source_successes=rescue.source_successes,
+        )
+    return rescue
+
+
 def attempt_convoy_local_dead_end_rescue(
     *,
     instance: Instance,
@@ -1241,10 +1619,14 @@ def attempt_convoy_local_dead_end_rescue(
     agent_ids: list[str],
     active_context: PlanningContext,
     deadline: float,
+    aggressive: bool = False,
 ) -> ConvoyRescueResult:
     time_remaining = max(0.0, deadline - perf_counter())
     if time_remaining <= 0.3:
         return ConvoyRescueResult(context=None, next_state=None)
+    preferred_first = choose_reference_mode(active_context.reference_source)
+    if aggressive and active_context.reference_source == "replanned_shortest_paths":
+        preferred_first = "individual_shortest_paths"
     portfolio = build_reference_portfolio(
         instance=instance,
         current_state=current_state,
@@ -1252,7 +1634,7 @@ def attempt_convoy_local_dead_end_rescue(
         goal_maps=goal_maps,
         agent_ids=agent_ids,
         time_limit_s=time_remaining,
-        preferred_first=choose_reference_mode(active_context.reference_source),
+        preferred_first=preferred_first,
     )
     source_attempts = len(portfolio)
     ranked_contexts = sorted(
@@ -1310,10 +1692,10 @@ def attempt_convoy_local_dead_end_rescue(
             goals=goals,
             goal_maps=goal_maps,
             reference_trajectory=reference_trajectory,
-            beam_horizon=6,
-            beam_width=128,
-            candidate_cap=4,
-            partial_limit=96,
+            beam_horizon=7 if aggressive else 6,
+            beam_width=160 if aggressive else 128,
+            candidate_cap=5 if aggressive else 4,
+            partial_limit=128 if aggressive else 96,
             deadline=deadline,
             support_agents=None,
             diversify=True,
@@ -1339,11 +1721,11 @@ def attempt_convoy_local_dead_end_rescue(
             goals=goals,
             goal_maps=goal_maps,
             reference_trajectory=reference_trajectory,
-            beam_width=40,
-            candidate_cap=4,
-            depth=3,
+            beam_width=56 if aggressive else 40,
+            candidate_cap=5 if aggressive else 4,
+            depth=4 if aggressive else 3,
             deadline=deadline,
-            support_limit=8,
+            support_limit=10 if aggressive else 8,
             diversify=True,
         )
         if repair.first_state is not None and repair.first_state != current_state:

@@ -1,0 +1,50 @@
+name: visual_paper_gallery
+families:
+  - open
+  - corridor
+  - warehouse
+  - formation_shift
+scales:
+  - width: 16
+    height: 16
+    agents: 4
+  - width: 20
+    height: 20
+    agents: 6
+  - width: 24
+    height: 24
+    agents: 8
+  - width: 28
+    height: 28
+    agents: 10
+  - width: 32
+    height: 32
+    agents: 12
+seeds: [1, 2, 3]
+planners:
+  - connected_step
+  - windowed_cc
+  - prioritized_cc
+time_limit_s: 120.0
+time_limit_s_by_scale:
+  16x16_4a: 45.0
+  20x20_6a: 75.0
+  24x24_8a: 120.0
+  28x28_10a: 180.0
+  32x32_12a: 300.0
+render:
+  enabled: true
+  preset: showcase
+  font_family: CMU Serif
+  font_weight: normal
+  dpi: 220
+  figsize: [6.8, 6.8]
+  gif_fps: 6
+  interpolation_steps: 4
+  show_connectivity_edges: true
+  annotation_style: minimal
+  theme: academic
+  palette_preset: academic
+  glow_effect: false
+  glow_radius: 0
+output_root: artifacts/runs

@@ -26,7 +26,7 @@ render:
   enabled: true
   preset: showcase
   # Academic/Publication style
-  font_family: DejaVu Serif
+  font_family: CMU Serif
   font_weight: normal
   dpi: 300  # Print quality
   figsize: [6.0, 6.0]

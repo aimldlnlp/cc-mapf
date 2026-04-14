@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import yaml
+from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Circle, Rectangle
 from matplotlib.patches import PathPatch
 from matplotlib.path import Path as MplPath
@@ -162,10 +163,11 @@ def load_theme_preset(theme_name: str) -> dict[str, Any]:
 def apply_style(config: RenderConfig) -> None:
     # Apply theme preset if specified
     theme = load_theme_preset(config.theme)
+    font_family = config.effective_font_family()
     
     plt.rcParams.update(
         {
-            "font.family": config.font_family,
+            "font.family": font_family,
             "font.weight": config.font_weight,
             "axes.titleweight": config.font_weight,
             "axes.labelweight": config.font_weight,
@@ -256,6 +258,7 @@ def render_showcase(
         or select_pair(records, family="formation_shift")
         or compare_corridor
     )
+    diagnostic_record = select_windowed_cc_record(records) or open_record
 
     main_instance, main_states, _ = load_trace(run_path, main_record)
     corridor_instance, corridor_states, _ = load_trace(run_path, corridor_record)
@@ -264,13 +267,15 @@ def render_showcase(
     compare_left_instance, compare_right_instance, compare_states_left, compare_states_right, compare_time = load_compare_trace(run_path, compare_corridor)
     warehouse_left_instance, warehouse_right_instance, warehouse_left, warehouse_right, _ = load_compare_trace(run_path, compare_warehouse)
     formation_left_instance, formation_right_instance, formation_left, formation_right, _ = load_compare_trace(run_path, compare_formation)
+    diagnostic_instance, diagnostic_states, _ = load_trace(run_path, diagnostic_record)
+    diagnostic_payload = load_trace_payload(run_path, diagnostic_record)
 
     manifest_sources: dict[str, dict[str, Any]] = {}
     mid_corridor = choose_midpoint(corridor_states)
     mid_formation = choose_midpoint(formation_states)
-    fig01 = showcase_dir / "fig01_problem_setup.png"
+    problem_setup = showcase_dir / "problem-setup.png"
     render_scene_png(
-        fig01,
+        problem_setup,
         main_instance,
         main_states[0],
         render_config,
@@ -280,11 +285,11 @@ def render_showcase(
         show_connectivity=False,
         legend=True,
     )
-    manifest_sources["fig01_problem_setup.png"] = source_entry(main_record, timestep=0)
+    manifest_sources["problem-setup.png"] = source_entry(main_record, timestep=0)
 
-    fig02 = showcase_dir / "fig02_start_configuration.png"
+    start_configuration = showcase_dir / "start-configuration.png"
     render_scene_png(
-        fig02,
+        start_configuration,
         main_instance,
         main_states[0],
         render_config,
@@ -293,11 +298,11 @@ def render_showcase(
         show_goals=True,
         show_connectivity=True,
     )
-    manifest_sources["fig02_start_configuration.png"] = source_entry(main_record, timestep=0)
+    manifest_sources["start-configuration.png"] = source_entry(main_record, timestep=0)
 
-    fig03 = showcase_dir / "fig03_corridor_mid_execution.png"
+    corridor_mid_execution = showcase_dir / "corridor-mid-execution.png"
     render_scene_png(
-        fig03,
+        corridor_mid_execution,
         corridor_instance,
         corridor_states[mid_corridor],
         render_config,
@@ -306,11 +311,11 @@ def render_showcase(
         show_goals=True,
         show_connectivity=True,
     )
-    manifest_sources["fig03_corridor_mid_execution.png"] = source_entry(corridor_record, timestep=mid_corridor)
+    manifest_sources["corridor-mid-execution.png"] = source_entry(corridor_record, timestep=mid_corridor)
 
-    fig04 = showcase_dir / "fig04_formation_transition.png"
+    formation_transition = showcase_dir / "formation-transition.png"
     render_scene_png(
-        fig04,
+        formation_transition,
         formation_instance,
         formation_states[mid_formation],
         render_config,
@@ -319,11 +324,11 @@ def render_showcase(
         show_goals=True,
         show_connectivity=True,
     )
-    manifest_sources["fig04_formation_transition.png"] = source_entry(formation_record, timestep=mid_formation)
+    manifest_sources["formation-transition.png"] = source_entry(formation_record, timestep=mid_formation)
 
-    fig05 = showcase_dir / "fig05_final_configuration.png"
+    final_configuration = showcase_dir / "final-configuration.png"
     render_scene_png(
-        fig05,
+        final_configuration,
         main_instance,
         main_states[-1],
         render_config,
@@ -332,11 +337,11 @@ def render_showcase(
         show_goals=True,
         show_connectivity=True,
     )
-    manifest_sources["fig05_final_configuration.png"] = source_entry(main_record, timestep=len(main_states) - 1)
+    manifest_sources["final-configuration.png"] = source_entry(main_record, timestep=len(main_states) - 1)
 
-    fig06 = showcase_dir / "fig06_baseline_vs_connected_panel.png"
+    baseline_panel = showcase_dir / "baseline-vs-connected-panel.png"
     render_compare_png(
-        fig06,
+        baseline_panel,
         compare_left_instance,
         compare_right_instance,
         compare_states_left[min(compare_time, len(compare_states_left) - 1)],
@@ -346,18 +351,18 @@ def render_showcase(
         right_title=f"{compare_corridor[1]['planner']} @ t={compare_time}",
         subtitle="Baseline vs connectivity-aware planner",
     )
-    manifest_sources["fig06_baseline_vs_connected_panel.png"] = {
+    manifest_sources["baseline-vs-connected-panel.png"] = {
         "left": source_entry(compare_corridor[0], timestep=compare_time),
         "right": source_entry(compare_corridor[1], timestep=compare_time),
     }
 
-    fig07 = showcase_dir / "fig07_benchmark_summary.png"
-    render_summary_png(fig07, summary_data, render_config)
-    manifest_sources["fig07_benchmark_summary.png"] = {"summary": "aggregated_metrics"}
+    benchmark_summary = showcase_dir / "benchmark-summary.png"
+    render_summary_png(benchmark_summary, summary_data, render_config)
+    manifest_sources["benchmark-summary.png"] = {"summary": "aggregated_metrics"}
 
-    gif01 = showcase_dir / "gif01_corridor_compare.gif"
+    corridor_comparison = showcase_dir / "corridor-comparison.gif"
     render_compare_gif(
-        gif01,
+        corridor_comparison,
         compare_left_instance,
         compare_right_instance,
         compare_states_left,
@@ -366,14 +371,14 @@ def render_showcase(
         left_title=compare_corridor[0]["planner"],
         right_title=compare_corridor[1]["planner"],
     )
-    manifest_sources["gif01_corridor_compare.gif"] = {
+    manifest_sources["corridor-comparison.gif"] = {
         "left": source_entry(compare_corridor[0]),
         "right": source_entry(compare_corridor[1]),
     }
 
-    gif02 = showcase_dir / "gif02_warehouse_compare.gif"
+    warehouse_comparison = showcase_dir / "warehouse-comparison.gif"
     render_compare_gif(
-        gif02,
+        warehouse_comparison,
         warehouse_left_instance,
         warehouse_right_instance,
         warehouse_left,
@@ -382,14 +387,14 @@ def render_showcase(
         left_title=compare_warehouse[0]["planner"],
         right_title=compare_warehouse[1]["planner"],
     )
-    manifest_sources["gif02_warehouse_compare.gif"] = {
+    manifest_sources["warehouse-comparison.gif"] = {
         "left": source_entry(compare_warehouse[0]),
         "right": source_entry(compare_warehouse[1]),
     }
 
-    gif03 = showcase_dir / "gif03_formation_compare.gif"
+    formation_comparison = showcase_dir / "formation-comparison.gif"
     render_compare_gif(
-        gif03,
+        formation_comparison,
         formation_left_instance,
         formation_right_instance,
         formation_left,
@@ -398,14 +403,35 @@ def render_showcase(
         left_title=compare_formation[0]["planner"],
         right_title=compare_formation[1]["planner"],
     )
-    manifest_sources["gif03_formation_compare.gif"] = {
+    manifest_sources["formation-comparison.gif"] = {
         "left": source_entry(compare_formation[0]),
         "right": source_entry(compare_formation[1]),
     }
 
-    gif04 = showcase_dir / "gif04_open_space_connected.gif"
-    render_single_gif(gif04, open_instance, open_states, render_config, title="Open-space connected execution")
-    manifest_sources["gif04_open_space_connected.gif"] = source_entry(open_record)
+    open_space_connected = showcase_dir / "open-space-connected.gif"
+    render_single_gif(open_space_connected, open_instance, open_states, render_config, title="Open-space connected execution")
+    manifest_sources["open-space-connected.gif"] = source_entry(open_record)
+
+    recovery_showcase = showcase_dir / "windowed-cc-recovery-showcase.gif"
+    diagnostic_title = "Windowed CC recovery showcase" if diagnostic_record["planner"] == "windowed_cc" else "Connectivity-aware recovery showcase"
+    render_single_gif(recovery_showcase, diagnostic_instance, diagnostic_states, render_config, title=diagnostic_title)
+    manifest_sources["windowed-cc-recovery-showcase.gif"] = source_entry(diagnostic_record)
+
+    planner_success_matrix = showcase_dir / "planner-success-matrix.png"
+    render_planner_success_matrix(planner_success_matrix, records, render_config)
+    manifest_sources["planner-success-matrix.png"] = {"summary": "planner_family_scale_success"}
+
+    failure_reason_breakdown = showcase_dir / "failure-reason-breakdown.png"
+    render_failure_reason_breakdown(failure_reason_breakdown, records, render_config)
+    manifest_sources["failure-reason-breakdown.png"] = {"summary": "planner_failure_reason_breakdown"}
+
+    reference_portfolio = showcase_dir / "windowed-cc-reference-portfolio.png"
+    render_windowed_cc_reference_portfolio(reference_portfolio, records, render_config)
+    manifest_sources["windowed-cc-reference-portfolio.png"] = {"planner": "windowed_cc"}
+
+    progress_timeline = showcase_dir / "windowed-cc-progress-timeline.png"
+    render_windowed_cc_progress_timeline(progress_timeline, diagnostic_record, diagnostic_instance, diagnostic_states, diagnostic_payload, render_config)
+    manifest_sources["windowed-cc-progress-timeline.png"] = source_entry(diagnostic_record)
 
     manifest = ShowcaseManifest(run_id=payload["run_id"], sources=manifest_sources)
     dump_json(manifest.to_dict(), showcase_dir / "showcase_manifest.json")
@@ -446,6 +472,13 @@ def source_entry(record: dict[str, Any], timestep: int | None = None) -> dict[st
     if timestep is not None:
         payload["timestep"] = timestep
     return payload
+
+
+def slugify_label(value: str) -> str:
+    slug = "".join(ch.lower() if ch.isalnum() else "-" for ch in value)
+    while "--" in slug:
+        slug = slug.replace("--", "-")
+    return slug.strip("-") or "item"
 
 
 def select_record(
@@ -530,6 +563,29 @@ def select_pair(
     return candidates[0][1]
 
 
+def select_windowed_cc_record(records: list[dict[str, Any]]) -> dict[str, Any] | None:
+    candidates = [
+        record
+        for record in records
+        if record["has_plan"] and record["planner"] == "windowed_cc"
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            -int(item.get("executable_recovery_successes", 0)),
+            -int(item.get("stall_recovery_uses", 0)),
+            -int(item.get("fallback_windows", 0)),
+            -int(item.get("window_failures", 0)),
+            -record_agent_count(item),
+            -record_grid_area(item),
+            -float(item.get("runtime_s", 0.0)),
+            item["instance"],
+        )
+    )
+    return candidates[0]
+
+
 def load_trace(run_dir: Path, record: dict[str, Any]) -> tuple[Instance, list[dict[str, tuple[int, int]]], dict[str, Any]]:
     instance = Instance.from_dict(record["instance_data"])
     if record["plan_file"] is None:
@@ -541,6 +597,12 @@ def load_trace(run_dir: Path, record: dict[str, Any]) -> tuple[Instance, list[di
         for state in payload["states"]
     ]
     return instance, states, payload["validation"]
+
+
+def load_trace_payload(run_dir: Path, record: dict[str, Any]) -> dict[str, Any]:
+    if record["plan_file"] is None:
+        return {"planner_result": {"metadata": {}}}
+    return load_json(run_dir / record["plan_file"])
 
 
 def load_compare_trace(
@@ -561,6 +623,526 @@ def choose_midpoint(states: list[dict[str, tuple[int, int]]]) -> int:
     if len(states) <= 2:
         return 0
     return len(states) // 2
+
+
+def iter_gallery_records(
+    records: list[dict[str, Any]],
+    *,
+    require_plan: bool = True,
+) -> list[dict[str, Any]]:
+    filtered = [
+        record
+        for record in records
+        if (record["has_plan"] if require_plan else True)
+    ]
+    filtered.sort(
+        key=lambda item: (
+            item["family"],
+            item["scale"],
+            item["planner"],
+            int(item["seed"]),
+            item["instance"],
+        )
+    )
+    return filtered
+
+
+def select_hero_records(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    heroes: dict[str, dict[str, Any]] = {}
+    for family in sorted({record["family"] for record in records}):
+        hero = (
+            select_record(records, family=family, planner="connected_step", min_agents=8)
+            or select_record(records, family=family, planner="windowed_cc", min_agents=8)
+            or select_record(records, family=family, min_agents=8)
+            or select_record(records, family=family)
+        )
+        if hero is not None:
+            heroes[family] = hero
+    return heroes
+
+
+def select_compare_pair_for_group(
+    records: list[dict[str, Any]],
+    *,
+    family: str,
+    scale: str,
+    seed: int,
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    subset = [
+        record
+        for record in records
+        if record["family"] == family
+        and record["scale"] == scale
+        and int(record["seed"]) == seed
+        and record["has_plan"]
+    ]
+    if not subset:
+        return None
+    planners = {record["planner"]: record for record in subset}
+    baseline = planners.get("prioritized_cc")
+    connected = planners.get("connected_step") or planners.get("windowed_cc")
+    if baseline is not None and connected is not None:
+        return baseline, connected
+    return None
+
+
+def render_planner_success_matrix(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    planners = sorted({record["planner"] for record in records})
+    columns = sorted({f"{record['family']}\n{record['scale']}" for record in records})
+    matrix = np.full((len(planners), len(columns)), np.nan)
+    for row_index, planner in enumerate(planners):
+        for column_index, column in enumerate(columns):
+            family, scale = column.split("\n")
+            subset = [
+                record
+                for record in records
+                if record["planner"] == planner and record["family"] == family and record["scale"] == scale
+            ]
+            if subset:
+                matrix[row_index, column_index] = sum(1 for record in subset if record["solved"]) / len(subset)
+    fig, ax = plt.subplots(figsize=(max(8.0, len(columns) * 0.75), max(4.0, len(planners) * 0.75)), dpi=config.dpi)
+    image = ax.imshow(matrix, cmap="YlGn", vmin=0.0, vmax=1.0, aspect="auto")
+    ax.set_xticks(np.arange(len(columns)))
+    ax.set_yticks(np.arange(len(planners)))
+    ax.set_xticklabels(columns, rotation=35, ha="right")
+    ax.set_yticklabels(planners)
+    ax.set_title("Planner Success Matrix")
+    for row_index in range(len(planners)):
+        for column_index in range(len(columns)):
+            value = matrix[row_index, column_index]
+            if not np.isnan(value):
+                ax.text(column_index, row_index, f"{value * 100:.0f}%", ha="center", va="center", fontsize=8)
+    cbar = plt.colorbar(image, ax=ax, shrink=0.8)
+    cbar.set_label("Success rate")
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_failure_reason_breakdown(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
+    planners = sorted({record["planner"] for record in records})
+    reasons = sorted(
+        {
+            record["failure_reason"] or record["planner_status"]
+            for record in records
+            if not record["solved"]
+        }
+    )
+    fig, ax = plt.subplots(figsize=(max(8.0, len(planners) * 2.0), 5.5), dpi=config.dpi)
+    bottom = np.zeros(len(planners))
+    for index, reason in enumerate(reasons):
+        values = np.array(
+            [
+                sum(
+                    1
+                    for record in records
+                    if record["planner"] == planner
+                    and not record["solved"]
+                    and (record["failure_reason"] or record["planner_status"]) == reason
+                )
+                for planner in planners
+            ]
+        )
+        ax.bar(planners, values, bottom=bottom, color=palette[index % len(palette)], label=reason)
+        bottom += values
+    ax.set_title("Failure Reason Breakdown")
+    ax.set_ylabel("Failed instances")
+    ax.grid(True, axis="y", alpha=0.25)
+    if reasons:
+        ax.legend(fontsize=8, frameon=False)
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_windowed_cc_reference_portfolio(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    windowed_records = [record for record in records if record["planner"] == "windowed_cc"]
+    aggregated: dict[str, dict[str, int]] = {}
+    for record in windowed_records:
+        for attempt in record.get("reference_attempt_sequence", []):
+            label = str(attempt.get("portfolio_source") or attempt.get("source") or "unknown")
+            bucket = aggregated.setdefault(label, {"attempted": 0, "usable": 0, "non_usable": 0, "skipped": 0})
+            bucket["attempted"] += 1
+            if str(attempt.get("status")) == "skipped_deadline":
+                bucket["skipped"] += 1
+            elif attempt.get("usable"):
+                bucket["usable"] += 1
+            else:
+                bucket["non_usable"] += 1
+    fig, ax = plt.subplots(figsize=(8.5, 5.5), dpi=config.dpi)
+    if not aggregated:
+        _render_placeholder(ax, "Windowed CC reference portfolio", "No windowed_cc records available in this run.")
+    else:
+        labels = list(aggregated)
+        usable = np.array([aggregated[label]["usable"] for label in labels])
+        non_usable = np.array([aggregated[label]["non_usable"] for label in labels])
+        skipped = np.array([aggregated[label]["skipped"] for label in labels])
+        ax.bar(labels, usable, label="usable", color="#2A9D8F")
+        ax.bar(labels, non_usable, bottom=usable, label="not usable", color="#E76F51")
+        ax.bar(labels, skipped, bottom=usable + non_usable, label="deadline skipped", color="#E9C46A")
+        ax.set_title("Windowed CC Reference Portfolio")
+        ax.set_ylabel("Attempts")
+        ax.tick_params(axis="x", rotation=25)
+        ax.grid(True, axis="y", alpha=0.25)
+        ax.legend(frameon=False, fontsize=8)
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_windowed_cc_progress_timeline(
+    path: Path,
+    record: dict[str, Any],
+    instance: Instance,
+    states: list[dict[str, tuple[int, int]]],
+    payload: dict[str, Any],
+    config: RenderConfig,
+) -> None:
+    theme = load_theme_preset(config.theme)
+    metadata = payload.get("planner_result", {}).get("metadata", {})
+    timeline = list(metadata.get("progress_timeline", []))
+    fig, axes = plt.subplots(2, 1, figsize=(9.0, 6.2), dpi=config.dpi, sharex=True)
+    if not timeline:
+        _render_placeholder(
+            axes[0],
+            "Windowed CC progress timeline",
+            "No progress timeline metadata was recorded for this run.",
+        )
+        axes[1].axis("off")
+        fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+        plt.close(fig)
+        return
+    step_index = [int(entry.get("step_index", idx + 1)) for idx, entry in enumerate(timeline)]
+    agents_at_goal = [int(entry.get("agents_at_goal", 0)) for entry in timeline]
+    first_arrivals = [int(entry.get("first_arrival_count", 0)) for entry in timeline]
+    remaining_distance = [int(entry.get("remaining_distance", 0)) for entry in timeline]
+    reference_frontier = [int(entry.get("reference_frontier", 0)) for entry in timeline]
+    modes = [str(entry.get("mode", "local_window")) for entry in timeline]
+
+    axes[0].plot(step_index, agents_at_goal, marker="o", linewidth=1.8, label="agents at goal", color="#2563EB")
+    axes[0].plot(step_index, first_arrivals, marker="s", linewidth=1.5, label="first arrivals", color="#D97706")
+    axes[0].set_ylabel("Goal progress")
+    axes[0].set_title(
+        f"Windowed CC progress timeline: {record['instance']}\n"
+        f"mode={record.get('window_mode', '')} source={record.get('reference_source', '')}"
+    )
+    axes[0].grid(True, alpha=0.25)
+    axes[0].legend(frameon=False, fontsize=8)
+
+    axes[1].plot(step_index, remaining_distance, marker="o", linewidth=1.8, label="remaining distance", color="#DC2626")
+    axes[1].plot(step_index, reference_frontier, marker="^", linewidth=1.5, label="reference frontier", color="#059669")
+    axes[1].set_xlabel("Replan step")
+    axes[1].set_ylabel("Recovery progress")
+    axes[1].grid(True, alpha=0.25)
+    axes[1].legend(frameon=False, fontsize=8)
+    _shade_timeline_modes(axes[0], step_index, modes)
+    _shade_timeline_modes(axes[1], step_index, modes)
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_runtime_success_scatter(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
+    scales = sorted({record["scale"] for record in records})
+    planners = sorted({record["planner"] for record in records})
+    fig, axes = plt.subplots(1, max(1, len(scales)), figsize=(max(6.0, len(scales) * 3.8), 4.8), dpi=config.dpi)
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+    for index, scale in enumerate(scales):
+        ax = axes[index]
+        subset = [record for record in records if record["scale"] == scale]
+        for planner_index, planner in enumerate(planners):
+            planner_subset = [record for record in subset if record["planner"] == planner]
+            if not planner_subset:
+                continue
+            x = [float(record.get("runtime_s", 0.0)) for record in planner_subset]
+            y = [1.0 if record.get("solved") else 0.0 for record in planner_subset]
+            ax.scatter(
+                x,
+                y,
+                label=planner,
+                color=palette[planner_index % len(palette)],
+                alpha=0.8,
+                edgecolors=theme.get("axes_edgecolor", "#374151"),
+                linewidths=0.5,
+            )
+        ax.set_title(scale)
+        ax.set_xlabel("Runtime (s)")
+        ax.set_ylabel("Solved")
+        ax.set_yticks([0.0, 1.0], labels=["no", "yes"])
+        ax.grid(True, alpha=0.25)
+    handles, labels = axes[0].get_legend_handles_labels()
+    if handles:
+        fig.legend(handles, labels, loc="upper center", ncol=min(4, len(labels)), frameon=False)
+    fig.suptitle("Runtime vs Success by Scale", y=0.98)
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_makespan_boxplot(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    families = sorted({record["family"] for record in records})
+    planners = sorted({record["planner"] for record in records})
+    fig, axes = plt.subplots(1, max(1, len(families)), figsize=(max(6.0, len(families) * 4.0), 4.8), dpi=config.dpi)
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+    for index, family in enumerate(families):
+        ax = axes[index]
+        data = []
+        labels = []
+        for planner in planners:
+            values = [
+                float(record["makespan"])
+                for record in records
+                if record["family"] == family and record["planner"] == planner and record["solved"] and record["makespan"] is not None
+            ]
+            if values:
+                data.append(values)
+                labels.append(planner)
+        if data:
+            box = ax.boxplot(data, patch_artist=True, tick_labels=labels)
+            palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
+            for patch, color in zip(box["boxes"], palette, strict=False):
+                patch.set_facecolor(color)
+                patch.set_alpha(0.75)
+        else:
+            _render_placeholder(ax, family, "No solved records")
+        ax.set_title(family)
+        ax.set_ylabel("Makespan")
+        ax.tick_params(axis="x", rotation=20)
+        ax.grid(True, axis="y", alpha=0.25)
+    fig.suptitle("Solved Makespan Distribution by Family", y=0.98)
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_connectivity_rejection_heatmap(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    planners = sorted({record["planner"] for record in records})
+    columns = sorted({f"{record['family']}\n{record['scale']}" for record in records})
+    matrix = np.full((len(planners), len(columns)), np.nan)
+    for row_index, planner in enumerate(planners):
+        for column_index, column in enumerate(columns):
+            family, scale = column.split("\n")
+            subset = [
+                record
+                for record in records
+                if record["planner"] == planner and record["family"] == family and record["scale"] == scale
+            ]
+            if subset:
+                matrix[row_index, column_index] = mean([float(record.get("connectivity_rejections", 0)) for record in subset])
+    fig, ax = plt.subplots(figsize=(max(8.0, len(columns) * 0.75), max(4.0, len(planners) * 0.75)), dpi=config.dpi)
+    image = ax.imshow(matrix, cmap="YlOrBr", aspect="auto")
+    ax.set_xticks(np.arange(len(columns)))
+    ax.set_yticks(np.arange(len(planners)))
+    ax.set_xticklabels(columns, rotation=35, ha="right")
+    ax.set_yticklabels(planners)
+    ax.set_title("Connectivity Rejection Heatmap")
+    cbar = plt.colorbar(image, ax=ax, shrink=0.8)
+    cbar.set_label("Mean connectivity rejections")
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_solved_count_heatmap(path: Path, records: list[dict[str, Any]], config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    planners = sorted({record["planner"] for record in records})
+    scales = sorted({record["scale"] for record in records})
+    matrix = np.zeros((len(planners), len(scales)))
+    for row_index, planner in enumerate(planners):
+        for column_index, scale in enumerate(scales):
+            matrix[row_index, column_index] = sum(
+                1
+                for record in records
+                if record["planner"] == planner and record["scale"] == scale and record["solved"]
+            )
+    fig, ax = plt.subplots(figsize=(max(7.0, len(scales) * 1.2), max(4.0, len(planners) * 0.9)), dpi=config.dpi)
+    image = ax.imshow(matrix, cmap="Greens", aspect="auto")
+    ax.set_xticks(np.arange(len(scales)))
+    ax.set_yticks(np.arange(len(planners)))
+    ax.set_xticklabels(scales, rotation=25, ha="right")
+    ax.set_yticklabels(planners)
+    ax.set_title("Solved Count by Robot Scale")
+    for row_index in range(len(planners)):
+        for column_index in range(len(scales)):
+            ax.text(column_index, row_index, int(matrix[row_index, column_index]), ha="center", va="center", fontsize=8)
+    cbar = plt.colorbar(image, ax=ax, shrink=0.8)
+    cbar.set_label("Solved instances")
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_contact_sheet(
+    path: Path,
+    records: list[dict[str, Any]],
+    run_dir: Path,
+    config: RenderConfig,
+    *,
+    title: str,
+) -> None:
+    theme = load_theme_preset(config.theme)
+    if not records:
+        fig, ax = plt.subplots(figsize=(7.0, 4.0), dpi=config.dpi)
+        _render_placeholder(ax, title, "No records available.")
+        fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+        plt.close(fig)
+        return
+    rows = len(records)
+    fig, axes = plt.subplots(rows, 3, figsize=(config.figsize[0] * 2.4, max(3.0, rows * config.figsize[1] * 0.7)), dpi=config.dpi)
+    axes = np.array(axes, dtype=object)
+    if axes.ndim == 1:
+        axes = axes.reshape(1, 3)
+    fig.patch.set_facecolor(theme.get("background_color", config.background_color))
+    for row_index, record in enumerate(records):
+        instance, states, _ = load_trace(run_dir, record)
+        indices = [0, choose_midpoint(states), max(0, len(states) - 1)]
+        titles = [
+            f"{record['planner']} s{record['seed']} start",
+            f"{record['planner']} s{record['seed']} mid",
+            f"{record['planner']} s{record['seed']} final",
+        ]
+        for col_index, (state_index, cell_title) in enumerate(zip(indices, titles, strict=True)):
+            ax = axes[row_index, col_index]
+            draw_scene(ax, instance, states[state_index], config, show_goals=True, show_connectivity=True)
+            ax.set_title(cell_title, fontsize=9)
+    fig.suptitle(title, y=0.995)
+    fig.tight_layout()
+    fig.savefig(path, facecolor=theme.get("background_color", "#FFFFFF"))
+    plt.close(fig)
+
+
+def render_paper_gallery(
+    run_dir: str | Path,
+    *,
+    output_dir: str | Path | None = None,
+    config: RenderConfig | None = None,
+) -> tuple[Path, ShowcaseManifest]:
+    run_path = Path(run_dir)
+    payload = load_json(run_path / "results.json")
+    records = payload["records"]
+    render_config = config or RenderConfig.from_dict(payload.get("render_config"))
+    base_dir = ensure_dir(Path(output_dir) if output_dir is not None else run_path / "gallery")
+    png_dir = ensure_dir(base_dir / "png")
+    gif_dir = ensure_dir(base_dir / "gif")
+    contact_dir = ensure_dir(base_dir / "contact_sheets")
+    analysis_dir = ensure_dir(base_dir / "analysis")
+
+    manifest_sources: dict[str, dict[str, Any]] = {}
+    gallery_records = iter_gallery_records(records)
+    heroes = select_hero_records(records)
+
+    render_runtime_success_scatter(analysis_dir / "runtime-success-scatter.png", records, render_config)
+    manifest_sources["analysis/runtime-success-scatter.png"] = {"summary": "runtime_vs_success"}
+    render_makespan_boxplot(analysis_dir / "makespan-boxplot.png", records, render_config)
+    manifest_sources["analysis/makespan-boxplot.png"] = {"summary": "makespan_distribution"}
+    render_connectivity_rejection_heatmap(analysis_dir / "connectivity-rejection-heatmap.png", records, render_config)
+    manifest_sources["analysis/connectivity-rejection-heatmap.png"] = {"summary": "connectivity_rejections"}
+    render_solved_count_heatmap(analysis_dir / "solved-count-heatmap.png", records, render_config)
+    manifest_sources["analysis/solved-count-heatmap.png"] = {"summary": "solved_count_by_scale"}
+
+    for record in gallery_records:
+        instance, states, _ = load_trace(run_path, record)
+        family = slugify_label(record["family"])
+        scale = slugify_label(record["scale"])
+        planner = slugify_label(record["planner"])
+        stem = f"{slugify_label(record['instance'])}"
+        png_group_dir = ensure_dir(png_dir / family / scale / planner)
+        gif_group_dir = ensure_dir(gif_dir / family / scale / planner)
+
+        start_path = png_group_dir / f"{stem}__start.png"
+        midpoint_path = png_group_dir / f"{stem}__mid.png"
+        final_path = png_group_dir / f"{stem}__final.png"
+        render_scene_png(start_path, instance, states[0], render_config, title=record["instance"], subtitle="start", show_goals=True, show_connectivity=True)
+        render_scene_png(midpoint_path, instance, states[choose_midpoint(states)], render_config, title=record["instance"], subtitle="midpoint", show_goals=True, show_connectivity=True)
+        render_scene_png(final_path, instance, states[-1], render_config, title=record["instance"], subtitle="final", show_goals=True, show_connectivity=True)
+        manifest_sources[str(start_path.relative_to(base_dir))] = source_entry(record, timestep=0)
+        manifest_sources[str(midpoint_path.relative_to(base_dir))] = source_entry(record, timestep=choose_midpoint(states))
+        manifest_sources[str(final_path.relative_to(base_dir))] = source_entry(record, timestep=max(0, len(states) - 1))
+
+        if record["solved"]:
+            gif_path = gif_group_dir / f"{stem}.gif"
+            render_single_gif(gif_path, instance, states, render_config, title=record["instance"], show_trails=True)
+            manifest_sources[str(gif_path.relative_to(base_dir))] = source_entry(record)
+
+    grouped_by_family_scale: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for record in gallery_records:
+        grouped_by_family_scale.setdefault((record["family"], record["scale"]), []).append(record)
+    for (family, scale), subset in grouped_by_family_scale.items():
+        subset_sorted = sorted(subset, key=lambda item: (item["planner"], item["seed"], item["instance"]))
+        sheet_records = subset_sorted[: min(6, len(subset_sorted))]
+        sheet_path = contact_dir / f"{slugify_label(family)}__{slugify_label(scale)}.png"
+        render_contact_sheet(
+            sheet_path,
+            sheet_records,
+            run_path,
+            render_config,
+            title=f"{family} {scale} contact sheet",
+        )
+        manifest_sources[str(sheet_path.relative_to(base_dir))] = {
+            "family": family,
+            "scale": scale,
+            "records": [source_entry(record) for record in sheet_records],
+        }
+
+    grouped_for_compare = sorted({(record["family"], record["scale"], int(record["seed"])) for record in gallery_records})
+    for family, scale, seed in grouped_for_compare:
+        pair = select_compare_pair_for_group(records, family=family, scale=scale, seed=seed)
+        if pair is None:
+            continue
+        left_record, right_record = pair
+        left_instance, right_instance, left_states, right_states, _ = load_compare_trace(run_path, pair)
+        compare_path = gif_dir / slugify_label(family) / slugify_label(scale) / f"seed-{seed:02d}__compare.gif"
+        ensure_dir(compare_path.parent)
+        render_compare_gif(
+            compare_path,
+            left_instance,
+            right_instance,
+            left_states,
+            right_states,
+            render_config,
+            left_title=left_record["planner"],
+            right_title=right_record["planner"],
+            show_trails=True,
+        )
+        manifest_sources[str(compare_path.relative_to(base_dir))] = {
+            "left": source_entry(left_record),
+            "right": source_entry(right_record),
+        }
+
+    for family, hero in heroes.items():
+        manifest_sources[f"hero/{slugify_label(family)}"] = source_entry(hero)
+
+    manifest = ShowcaseManifest(
+        run_id=payload["run_id"],
+        sources=manifest_sources,
+        metadata={
+            "gallery_root": str(base_dir),
+            "render_config": render_config.to_dict(),
+            "hero_records": {family: source_entry(record) for family, record in heroes.items()},
+        },
+    )
+    dump_json(manifest.to_dict(), base_dir / "paper_gallery_manifest.json")
+    return base_dir, manifest
+
+
+def _render_placeholder(ax: plt.Axes, title: str, message: str) -> None:
+    ax.axis("off")
+    ax.set_title(title)
+    ax.text(0.5, 0.5, message, ha="center", va="center", fontsize=10, wrap=True)
+
+
+def _shade_timeline_modes(ax: plt.Axes, steps: list[int], modes: list[str]) -> None:
+    mode_colors = {
+        "local_window": "#DBEAFE",
+        "reference_prefix_fallback": "#FEF3C7",
+        "stall_escape": "#FDE2E2",
+    }
+    for index, step in enumerate(steps):
+        left = step - 0.5
+        right = steps[index + 1] - 0.5 if index + 1 < len(steps) else step + 0.5
+        ax.axvspan(left, right, color=mode_colors.get(modes[index], "#F3F4F6"), alpha=0.18, linewidth=0)
 
 
 def render_scene_png(
@@ -591,6 +1173,63 @@ def render_scene_png(
     if legend:
         fig.text(0.5, 0.02, "Goals are outlined squares; circles show current agent positions.", 
                 ha="center", fontsize=8, color=text_color)
+    fig.savefig(path, facecolor=theme.get("background_color", config.background_color))
+    plt.close(fig)
+
+
+def render_flow_density_png(
+    path: Path,
+    instance: Instance,
+    states: list[dict[str, tuple[int, int]]],
+    config: RenderConfig,
+    *,
+    title: str,
+    subtitle: str = "",
+    marker_mode: str = "goals_only",
+) -> None:
+    theme = load_theme_preset(config.theme)
+    fig, ax = plt.subplots(figsize=config.figsize, dpi=config.dpi)
+    fig.patch.set_facecolor(theme.get("background_color", config.background_color))
+
+    density = np.zeros((instance.grid.height, instance.grid.width), dtype=float)
+    for state in states:
+        for cell in state.values():
+            x_pos = int(round(cell[0]))
+            y_pos = int(round(cell[1]))
+            if 0 <= x_pos < instance.grid.width and 0 <= y_pos < instance.grid.height:
+                density[y_pos, x_pos] += 1.0
+    max_density = float(density.max()) if density.size else 0.0
+    if max_density > 0.0:
+        density /= max_density
+
+    density_cmap = LinearSegmentedColormap.from_list(
+        "paper_density",
+        ["#FFFFFF", "#E7EEF5", "#B7C7D8", "#708AA1", "#334E68"],
+    )
+
+    _configure_scene_axes(ax, instance, config)
+    ax.imshow(
+        density,
+        cmap=density_cmap,
+        vmin=0.0,
+        vmax=1.0,
+        interpolation="nearest",
+        extent=(0, instance.grid.width, instance.grid.height, 0),
+        alpha=0.95,
+        zorder=0,
+    )
+    _draw_obstacles(ax, instance, config)
+    if marker_mode == "goals_only":
+        _draw_goals(ax, instance, config)
+
+    title_color = theme.get("title_color", config.title_color)
+    subtitle_color = theme.get("subtitle_color", config.subtitle_color)
+    text_color = theme.get("text_color", config.text_color)
+    ax.set_title(title, fontsize=12, pad=8, color=title_color)
+    if subtitle:
+        fig.text(0.5, 0.965, subtitle, ha="center", va="top", fontsize=9, color=subtitle_color)
+    fig.text(0.5, 0.02, "Darker cells indicate higher occupancy density over the full trajectory.",
+             ha="center", fontsize=8, color=text_color)
     fig.savefig(path, facecolor=theme.get("background_color", config.background_color))
     plt.close(fig)
 
@@ -674,73 +1313,19 @@ def draw_scene(
     # Load theme and palette
     theme = load_theme_preset(config.theme)
     palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
-    
+    _configure_scene_axes(ax, instance, config)
+    _draw_obstacles(ax, instance, config)
+    if show_goals:
+        _draw_goals(ax, instance, config)
+
     # Theme colors
-    bg_color = theme.get("background_color", config.background_color)
-    grid_color = theme.get("grid_color", config.grid_color)
-    grid_linestyle = theme.get("grid_linestyle", "-")
-    obstacle_face = theme.get("obstacle_facecolor", config.obstacle_facecolor)
-    obstacle_edge = theme.get("obstacle_edgecolor", config.obstacle_edgecolor)
-    obstacle_hatch = theme.get("obstacle_hatch", None)
     conn_color = theme.get("connectivity_edge_color", config.connectivity_edge_color)
     conn_linestyle = theme.get("connectivity_linestyle", "-")
     agent_edge = theme.get("agent_edgecolor", config.agent_edgecolor)
-    text_color = theme.get("text_color", config.text_color)
     glow_effect = theme.get("glow_effect", config.glow_effect)
     glow_radius = theme.get("glow_radius", config.glow_radius)
     agent_size = theme.get("agent_size", config.agent_size)
-    
-    ax.set_xlim(0, instance.grid.width)
-    ax.set_ylim(instance.grid.height, 0)
-    ax.set_aspect("equal")
-    
-    # Grid settings - show every tick but with light styling
-    ax.set_xticks(np.arange(0, instance.grid.width + 1, 1))
-    ax.set_yticks(np.arange(0, instance.grid.height + 1, 1))
-    ax.grid(True, color=grid_color, linestyle=grid_linestyle, linewidth=0.4, alpha=0.6)
-    ax.tick_params(labelbottom=False, labelleft=False, length=0)
-    ax.set_facecolor(bg_color)
-    
-    # Remove spines for cleaner look in academic mode
-    if config.theme == "academic":
-        for spine in ax.spines.values():
-            spine.set_linewidth(0.5)
-            spine.set_color("#9CA3AF")
-    
-    # Draw obstacles
-    for obstacle in instance.grid.obstacles:
-        rect = Rectangle(
-            obstacle,
-            1,
-            1,
-            facecolor=obstacle_face,
-            edgecolor=obstacle_edge,
-            linewidth=0.5,
-        )
-        if obstacle_hatch:
-            rect.set_hatch(obstacle_hatch)
-            rect.set_facecolor("none")  # Hatch looks better without fill
-        ax.add_patch(rect)
-    
-    # Draw goals
-    if show_goals:
-        for index, agent in enumerate(instance.agents):
-            color = palette[index % len(palette)]
-            goal_linewidth = 1.5 if config.theme == "academic" else (1.2 if config.theme != "light" else 0.9)
-            goal_linestyle = "-" if config.theme == "academic" else ("-" if config.theme == "cyberpunk" else ":")
-            ax.add_patch(
-                Rectangle(
-                    (agent.goal[0] + 0.15, agent.goal[1] + 0.15),
-                    0.7,
-                    0.7,
-                    fill=False,
-                    edgecolor=color,
-                    linewidth=goal_linewidth,
-                    linestyle=goal_linestyle,
-                    alpha=0.9,
-                )
-            )
-    
+
     # Draw connectivity edges
     if show_connectivity:
         discrete_positions = {agent_id: (round(cell[0]), round(cell[1])) for agent_id, cell in positions.items()}
@@ -791,7 +1376,7 @@ def draw_scene(
         if config.theme == "academic":
             label_color = "#FFFFFF"  # White text on colored circles
         label_fontsize = 7
-        label_weight = "bold"
+        label_weight = config.font_weight
         
         ax.text(
             x_pos + 0.5,
@@ -801,8 +1386,70 @@ def draw_scene(
             va="center",
             fontsize=label_fontsize,
             fontweight=label_weight,
+            fontfamily=config.effective_font_family(),
             color=label_color,
             zorder=4,
+        )
+
+
+def _configure_scene_axes(ax: plt.Axes, instance: Instance, config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    bg_color = theme.get("background_color", config.background_color)
+    grid_color = theme.get("grid_color", config.grid_color)
+    grid_linestyle = theme.get("grid_linestyle", "-")
+    ax.set_xlim(0, instance.grid.width)
+    ax.set_ylim(instance.grid.height, 0)
+    ax.set_aspect("equal")
+    ax.set_xticks(np.arange(0, instance.grid.width + 1, 1))
+    ax.set_yticks(np.arange(0, instance.grid.height + 1, 1))
+    ax.grid(True, color=grid_color, linestyle=grid_linestyle, linewidth=0.4, alpha=0.6)
+    ax.tick_params(labelbottom=False, labelleft=False, length=0)
+    ax.set_facecolor(bg_color)
+    if config.theme == "academic":
+        for spine in ax.spines.values():
+            spine.set_linewidth(0.5)
+            spine.set_color("#9CA3AF")
+
+
+def _draw_obstacles(ax: plt.Axes, instance: Instance, config: RenderConfig) -> None:
+    theme = load_theme_preset(config.theme)
+    obstacle_face = theme.get("obstacle_facecolor", config.obstacle_facecolor)
+    obstacle_edge = theme.get("obstacle_edgecolor", config.obstacle_edgecolor)
+    obstacle_hatch = theme.get("obstacle_hatch", None)
+    for obstacle in instance.grid.obstacles:
+        rect = Rectangle(
+            obstacle,
+            1,
+            1,
+            facecolor=obstacle_face,
+            edgecolor=obstacle_edge,
+            linewidth=0.5,
+            zorder=2,
+        )
+        if obstacle_hatch:
+            rect.set_hatch(obstacle_hatch)
+            rect.set_facecolor("none")
+        ax.add_patch(rect)
+
+
+def _draw_goals(ax: plt.Axes, instance: Instance, config: RenderConfig) -> None:
+    palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
+    for index, agent in enumerate(instance.agents):
+        color = palette[index % len(palette)]
+        goal_linewidth = 1.5 if config.theme == "academic" else (1.2 if config.theme != "light" else 0.9)
+        goal_linestyle = "-" if config.theme == "academic" else ("-" if config.theme == "cyberpunk" else ":")
+        ax.add_patch(
+            Rectangle(
+                (agent.goal[0] + 0.15, agent.goal[1] + 0.15),
+                0.7,
+                0.7,
+                fill=False,
+                edgecolor=color,
+                linewidth=goal_linewidth,
+                linestyle=goal_linestyle,
+                alpha=0.9,
+                zorder=3,
+            )
         )
 
 

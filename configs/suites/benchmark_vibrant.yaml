@@ -25,8 +25,8 @@ time_limit_s_by_scale:
 render:
   enabled: true
   preset: showcase
-  font_family: DejaVu Sans
-  font_weight: bold
+  font_family: CMU Serif
+  font_weight: normal
   dpi: 160
   figsize: [6.0, 6.0]
   gif_fps: 4

@@ -1,250 +1,155 @@
-#!/usr/bin/env python3
-"""
-Prioritized Connectivity-Constrained MAPF.
+from __future__ import annotations
 
-Plan agents secara berurutan dengan priority ordering.
-Fast dan scalable, tapi suboptimal.
-"""
+from time import perf_counter
 
-import heapq
-from typing import Optional
-
-from ..environment import is_free, neighbors
-from ..model import AgentSpec, GridMap, Instance, Planner, PlannerResult
+from ..connectivity import position_connected_to_reference, resolve_connectivity_rule
+from ..environment import manhattan, shortest_path_length
+from ..model import Instance, Plan, Planner, PlannerResult
+from ..validation import validate_plan
+from .search_common import space_time_a_star
 
 
 class PrioritizedCCPlanner(Planner):
-    """
-    Prioritized planning dengan connectivity constraints.
-    
-    Algorithm:
-    1. Sort agents by priority (default: distance to goal)
-    2. For each agent in order:
-       - Plan path dengan A*
-       - Add constraints: must maintain connectivity to already-planned agents
-       - Treat other agents sebagai dynamic obstacles
-    
-    Usage:
-        planner = PrioritizedCCPlanner(connectivity_range=3.0)
-        result = planner.solve(instance, time_limit_s=300.0)
-    """
-    
     name: str = "prioritized_cc"
-    
-    def __init__(self, connectivity_range: float = 3.0,
-                 priority_order: str = "goal_distance"):
-        """
-        Args:
-            connectivity_range: Maximum distance untuk connectivity
-            priority_order: "goal_distance", "start_distance", atau "random"
-        """
+
+    def __init__(self, connectivity_range: float | None = None, priority_order: str = "goal_distance"):
         self.connectivity_range = connectivity_range
         self.priority_order = priority_order
-        
+
     def solve(self, instance: Instance, time_limit_s: float = 300.0) -> PlannerResult:
-        """
-        Run prioritized planning.
-        
-        Returns:
-            PlannerResult dengan status dan plan
-        """
-        import time
-        start_time = time.time()
-        
-        agents = list(instance.agents)
-        
-        # Sort agents by priority
-        if self.priority_order == "goal_distance":
-            agents.sort(key=lambda a: self._distance(a.start, a.goal))
-        elif self.priority_order == "start_distance":
-            agents.sort(key=lambda a: a.start[0] + a.start[1])
-        # else: random order (as-is)
-        
-        paths: dict[str, list[tuple[int, int]]] = {}
-        planned_positions: dict[int, list[tuple[int, int]]] = {}  # timestep -> positions
-        
-        for agent in agents:
-            # Check time limit
-            if time.time() - start_time > time_limit_s:
+        start_time = perf_counter()
+        base_order = self._base_order(instance)
+        rotations = min(3, len(base_order))
+        best_failure: PlannerResult | None = None
+        for rotation in range(rotations):
+            if perf_counter() - start_time > time_limit_s:
+                break
+            order = base_order[rotation:] + base_order[:rotation]
+            result = self._solve_with_order(instance, order, time_limit_s, start_time, rotation)
+            if result.status == "solved":
+                return result
+            best_failure = result
+        return best_failure or PlannerResult(
+            status="timeout",
+            plan=None,
+            runtime_s=perf_counter() - start_time,
+            expanded_nodes=0,
+            connectivity_rejections=0,
+            metadata={"planner": self.name},
+        )
+
+    def _solve_with_order(
+        self,
+        instance: Instance,
+        order,
+        time_limit_s: float,
+        start_time: float,
+        rotation: int,
+    ) -> PlannerResult:
+        reserved_vertices: set[tuple[tuple[int, int], int]] = set()
+        reserved_edges: set[tuple[tuple[int, int], tuple[int, int], int]] = set()
+        plan: Plan = {}
+        expanded_nodes = 0
+        connectivity_rejections = 0
+        optimistic = max((shortest_path_length(instance.grid, agent.start, agent.goal) or 0) for agent in instance.agents)
+        horizon = max(16, optimistic + instance.grid.width * instance.grid.height // 2 + len(instance.agents) * 4)
+        mode, radius = resolve_connectivity_rule(instance.connectivity, radius=self.connectivity_range)
+        for agent in order:
+            if perf_counter() - start_time > time_limit_s:
                 return PlannerResult(
                     status="timeout",
                     plan=None,
-                    runtime_s=time.time() - start_time,
-                    expanded_nodes=0,
-                    connectivity_rejections=0
+                    runtime_s=perf_counter() - start_time,
+                    expanded_nodes=expanded_nodes,
+                    connectivity_rejections=connectivity_rejections,
+                    metadata={"planner": self.name},
                 )
-            
-            path = self._plan_agent_with_connectivity(
-                agent, instance, paths, planned_positions
+            rejected_here = 0
+            reference_paths = {agent_id: path for agent_id, path in plan.items()}
+
+            def state_validator(cell: tuple[int, int], time_index: int) -> bool:
+                nonlocal rejected_here
+                if not position_connected_to_reference(
+                    cell,
+                    time_index,
+                    reference_paths,
+                    mode=mode,
+                    radius=radius,
+                ):
+                    rejected_here += 1
+                    return False
+                return True
+
+            search_result = space_time_a_star(
+                instance.grid,
+                agent.start,
+                agent.goal,
+                reserved_vertices=reserved_vertices,
+                reserved_edges=reserved_edges,
+                state_validator=state_validator if reference_paths else None,
+                max_time=horizon,
             )
-            if path is None:
+            connectivity_rejections += rejected_here
+            if search_result is None:
                 return PlannerResult(
-                    status="failure",
+                    status="failed",
                     plan=None,
-                    runtime_s=time.time() - start_time,
-                    expanded_nodes=0,
-                    connectivity_rejections=0
+                    runtime_s=perf_counter() - start_time,
+                    expanded_nodes=expanded_nodes,
+                    connectivity_rejections=connectivity_rejections,
+                    metadata={
+                        "planner": self.name,
+                        "failed_agent": agent.id,
+                        "priority_order": self.priority_order,
+                        "rotation": rotation,
+                        "connectivity_mode": mode,
+                        "connectivity_radius": radius,
+                    },
                 )
-            
-            paths[agent.id] = path
-            
-            # Update planned positions
-            for t, pos in enumerate(path):
-                if t not in planned_positions:
-                    planned_positions[t] = []
-                planned_positions[t].append(pos)
-        
+            path, expanded = search_result
+            expanded_nodes += expanded
+            plan[agent.id] = path
+            for time_index, cell in enumerate(path):
+                reserved_vertices.add((cell, time_index))
+                if time_index < len(path) - 1:
+                    reserved_edges.add((cell, path[time_index + 1], time_index))
+            for time_index in range(len(path), horizon + 1):
+                reserved_vertices.add((path[-1], time_index))
+        validation = validate_plan(instance, plan)
+        if not validation.valid:
+            return PlannerResult(
+                status="failed",
+                plan=plan,
+                runtime_s=perf_counter() - start_time,
+                expanded_nodes=expanded_nodes,
+                connectivity_rejections=connectivity_rejections,
+                metadata={
+                    "planner": self.name,
+                    "reason": "validation_failed",
+                    "priority_order": self.priority_order,
+                    "rotation": rotation,
+                    "connectivity_mode": mode,
+                    "connectivity_radius": radius,
+                },
+            )
         return PlannerResult(
-            status="success",
-            plan=paths,
-            runtime_s=time.time() - start_time,
-            expanded_nodes=0,
-            connectivity_rejections=0
+            status="solved",
+            plan=plan,
+            runtime_s=perf_counter() - start_time,
+            expanded_nodes=expanded_nodes,
+            connectivity_rejections=connectivity_rejections,
+            metadata={
+                "planner": self.name,
+                "priority_order": self.priority_order,
+                "rotation": rotation,
+                "connectivity_mode": mode,
+                "connectivity_radius": radius,
+            },
         )
-    
-    def _plan_agent_with_connectivity(self, agent: AgentSpec, instance: Instance,
-                                     existing_paths: dict[str, list[tuple[int, int]]],
-                                     planned_positions: dict[int, list[tuple[int, int]]]
-                                     ) -> Optional[list[tuple[int, int]]]:
-        """
-        Plan single agent dengan connectivity constraints ke agents yang sudah diplan.
-        
-        Strategy: A* dengan modified cost untuk encourage connectivity.
-        """
-        grid = instance.grid
-        start = agent.start
-        goal = agent.goal
-        
-        if not existing_paths:
-            # First agent: no connectivity constraint
-            return self._simple_a_star(grid, start, goal, planned_positions)
-        
-        # Get reference positions from already planned agents
-        
-        # A* dengan connectivity awareness
-        open_set: list[tuple[float, int, tuple[int, int], int]] = []
-        heapq.heappush(open_set, (0.0, 0, start, 0))
-        
-        g_score: dict[tuple[tuple[int, int], int], float] = {(start, 0): 0.0}
-        came_from: dict[tuple[tuple[int, int], int], tuple[tuple[int, int], int]] = {}
-        counter = 1
-        max_timestep = 500
-        
-        while open_set:
-            _, _, pos, timestep = heapq.heappop(open_set)
-            
-            if timestep > max_timestep:
-                continue
-            
-            # Check goal
-            if pos == goal:
-                # Reconstruct path
-                path = [pos]
-                current_key = (pos, timestep)
-                while current_key in came_from:
-                    current_key = came_from[current_key]
-                    path.append(current_key[0])
-                path.reverse()
-                return path
-            
-            # Expand neighbors
-            current_g = g_score.get((pos, timestep), float('inf'))
-            
-            for neighbor in neighbors(grid, pos, include_wait=True):
-                new_timestep = timestep + 1
-                
-                # Check collision dengan agents lain
-                if new_timestep in planned_positions and neighbor in planned_positions[new_timestep]:
-                    continue
-                
-                if not is_free(grid, neighbor):
-                    continue
-                
-                tentative_g = current_g + 1
-                
-                # Connectivity penalty
-                connectivity_penalty = self._compute_connectivity_penalty(
-                    neighbor, new_timestep, existing_paths
-                )
-                tentative_g += connectivity_penalty
-                
-                neighbor_key = (neighbor, new_timestep)
-                
-                if tentative_g < g_score.get(neighbor_key, float('inf')):
-                    came_from[neighbor_key] = (pos, timestep)
-                    g_score[neighbor_key] = tentative_g
-                    
-                    # Heuristic
-                    h = abs(neighbor[0] - goal[0]) + abs(neighbor[1] - goal[1])
-                    f = tentative_g + h
-                    
-                    heapq.heappush(open_set, (f, counter, neighbor, new_timestep))
-                    counter += 1
-        
-        return None
-    
-    def _compute_connectivity_penalty(self, pos: tuple[int, int], timestep: int,
-                                     existing_paths: dict[str, list[tuple[int, int]]]
-                                     ) -> float:
-        """
-        Compute penalty untuk positions yang jauh dari connected agents.
-        
-        Returns:
-            0 jika connected, positive value jika disconnected
-        """
-        min_dist = float('inf')
-        
-        for aid, path in existing_paths.items():
-            other_pos = path[min(timestep, len(path) - 1)]
-            dist = self._distance(pos, other_pos)
-            min_dist = min(min_dist, dist)
-        
-        if min_dist <= self.connectivity_range:
-            return 0.0  # Connected, no penalty
-        else:
-            # Penalty proportional to distance beyond range
-            return (min_dist - self.connectivity_range) * 0.5
-    
-    def _simple_a_star(self, grid: GridMap, start: tuple[int, int], goal: tuple[int, int],
-                      obstacles: dict) -> Optional[list[tuple[int, int]]]:
-        """Standard A* tanpa connectivity constraints."""
-        open_set: list[tuple[float, int, tuple[int, int]]] = []
-        heapq.heappush(open_set, (0.0, 0, start))
-        
-        g_score: dict[tuple[int, int], float] = {start: 0.0}
-        came_from: dict[tuple[int, int], tuple[int, int]] = {}
-        counter = 1
-        
-        while open_set:
-            _, _, pos = heapq.heappop(open_set)
-            
-            if pos == goal:
-                # Reconstruct path
-                path = [pos]
-                while pos in came_from:
-                    pos = came_from[pos]
-                    path.append(pos)
-                path.reverse()
-                return path
-            
-            for neighbor in neighbors(grid, pos, include_wait=True):
-                if not is_free(grid, neighbor):
-                    continue
-                
-                tentative_g = g_score[pos] + 1
-                
-                if tentative_g < g_score.get(neighbor, float('inf')):
-                    came_from[neighbor] = pos
-                    g_score[neighbor] = tentative_g
-                    
-                    h = abs(neighbor[0] - goal[0]) + abs(neighbor[1] - goal[1])
-                    f = tentative_g + h
-                    
-                    heapq.heappush(open_set, (f, counter, neighbor))
-                    counter += 1
-        
-        return None
-    
-    def _distance(self, pos1: tuple[int, int], pos2: tuple[int, int]) -> float:
-        """Euclidean distance."""
-        return ((pos1[0] - pos2[0]) ** 2 + (pos1[1] - pos2[1]) ** 2) ** 0.5
+
+    def _base_order(self, instance: Instance):
+        if self.priority_order == "start_distance":
+            return sorted(instance.agents, key=lambda agent: (agent.start[0] + agent.start[1], agent.id))
+        if self.priority_order == "agent_id":
+            return sorted(instance.agents, key=lambda agent: agent.id)
+        return sorted(instance.agents, key=lambda agent: (-manhattan(agent.start, agent.goal), agent.id))

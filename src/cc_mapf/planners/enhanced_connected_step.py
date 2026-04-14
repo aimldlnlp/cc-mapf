@@ -155,14 +155,25 @@ def windowed_beam_solve_adaptive(
     Adaptive windowed beam search - wrapper around original dengan parameter adjustment.
     For now, use standard windowed_beam_solve dengan increased parameters.
     """
-    from .connected_step import windowed_beam_solve, build_planning_context
+    from .connected_step import windowed_beam_solve
     from time import perf_counter
     
     start_time = perf_counter()
     
     # Use the original windowed_beam_solve dengan increased parameters
     # The adaptivity is in the EnhancedConnectedStepPlanner level (portfolio)
-    result = windowed_beam_solve(instance, time_limit_s)
+    warm_path_policy = "auto"
+    if reference_source == "replanned_shortest_paths":
+        warm_path_policy = "replanned_only"
+    elif reference_source == "individual_shortest_paths" and diversify:
+        warm_path_policy = "disabled"
+
+    result = windowed_beam_solve(
+        instance,
+        time_limit_s,
+        initial_reference_mode=reference_source,
+        initial_warm_path_policy=warm_path_policy,
+    )
     
     # Add metadata about strategy used
     if hasattr(result, 'metadata'):

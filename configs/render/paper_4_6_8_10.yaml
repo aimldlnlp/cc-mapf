@@ -1,0 +1,32 @@
+font_family: CMU Serif
+strict_font_family: CMU Serif
+font_weight: normal
+dpi: 220
+figsize: [6.6, 6.6]
+gif_fps: 6
+interpolation_steps: 4
+show_connectivity_edges: true
+snapshot_timestep_policy: peak_motion
+annotation_style: minimal
+theme: academic
+palette_preset: academic
+glow_effect: false
+glow_radius: 0
+agent_size: 0.30
+asset_budget_png: 8
+asset_budget_gif: 20
+hero_families:
+  - open
+  - corridor
+  - warehouse
+  - formation_shift
+hero_scales:
+  - 16x16_4a
+  - 20x20_6a
+  - 24x24_8a
+  - 28x28_10a
+hero_png_mode: flow_density
+density_marker_mode: goals_only
+png_bundle_mode: analysis_deck
+compare_baseline_planner: prioritized_cc
+final_export_only: true
