@@ -1,0 +1,16 @@
+{
+  "reference_commit": "4e7419e584f6f1633624ffd440296a14d8da769e",
+  "planner_modified_for_reference_generation": false,
+  "case": "warehouse_16x16_4a_s03",
+  "step_seconds": 0.625,
+  "motion_prediction_seconds": 0.25,
+  "settling_prediction_seconds": 0.125,
+  "controller": "measured-velocity future tree, currently eligible edges, current-tree fallback",
+  "files": {
+    "configs/instances/portfolio_warehouse.yaml": "269a31f26f11122aa966b64633bfd5fe7fae8cb4adbe5605a09d63965dbce14e",
+    "configs/plans/portfolio_warehouse.json": "17493faca17c08769559721cdab43f545694cc07efc8012179f58e537864caa7",
+    "src/cc_mapf/mujoco_sim.py": "4075be6231990020c9f52991d02ec23b3bf7fe10e83f25fa826dcf22e5bcac31",
+    "scripts/dev/evaluate_future_tree.py": "b4c7895e988a97ce8c1d29df32dabfc68326e6a2e4dd0281c4783ce46f13be3a"
+  },
+  "hash_scheme": "SHA256 of UTF-8 text with LF line endings"
+}

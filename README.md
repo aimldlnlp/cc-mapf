@@ -1,173 +1,108 @@
-# CC-MAPF
+# Connectivity-Constrained Multi-Robot Navigation
 
-Connectivity-Constrained Multi-Agent Path Finding research codebase with benchmark automation, visualization tooling, and detached experiment runners.
+**From discrete CC-MAPF plans to wheel-driven robot execution in MuJoCo.**
 
-![Success Rate Heatmap](docs/paper-bundle/png/success-rate-heatmap.png)
+Four omnidirectional robots navigate shared spaces while preserving a connected
+communication graph. The original CC-MAPF planner is extended with continuous
+transition scheduling, measured-state feedback, native wheel physics and
+reproducible execution checks.
 
-## Current Status
+https://github.com/user-attachments/assets/da7e61c0-6972-49b3-9986-2dba6f9e40e6
 
-The repository is currently centered on the 4/6/8/10-agent benchmark configuration, with `connected_step` as the best-performing planner on the official benchmark.
+Demo: four robots, 16 × 16 warehouse, native wheel/roller contacts and a 1 m
+Manhattan communication radius. Preview plays at **2× speed**.
+[Full MP4](https://github.com/aimldlnlp/cc-mapf/releases/download/mujoco-demo-v1/warehouse-full.mp4) · [Reproduction guide](docs/DEMO.md).
 
-Official best run summary:
+## Engineering problem
 
-| Slice | Solved / Total | Success Rate |
-| --- | ---: | ---: |
-| Overall | 47 / 48 | 97.9% |
-| 16x16_4a | 12 / 12 | 100.0% |
-| 20x20_6a | 12 / 12 | 100.0% |
-| 24x24_8a | 11 / 12 | 91.7% |
-| 28x28_10a | 12 / 12 | 100.0% |
-| Open | 11 / 12 | 91.7% |
-| Corridor | 12 / 12 | 100.0% |
-| Warehouse | 12 / 12 | 100.0% |
-| Formation Shift | 12 / 12 | 100.0% |
+A valid grid plan does not guarantee a valid physical execution. Interpolation
+can break connectivity between checkpoints; tracking error can cause obstacle
+contacts; retaining an old communication tree can oppose the next motion.
+The execution layer measures these failures alongside final goal attainment.
 
-The only remaining failure in the official best run is `open_24x24_8a_s01`, which exits on `plateau_limit`.
+## Architecture
 
-## Final Bundle
+```mermaid
+flowchart LR
+    A[Original CC-MAPF plan] --> B[Continuous transition scheduler]
+    B --> C[Waypoint targets]
+    C --> D[Connectivity and separation feedback]
+    D --> E[Wheel actuators and MuJoCo physics]
+    E -->|Measured positions and velocities| D
+    E --> F[Contacts, connectivity, tracking and goal checks]
+```
 
-The README now uses assets copied from the final curated bundle so GitHub can render them correctly:
+- **Scheduler:** preserves original joint checkpoints and inserts quarter steps
+  or local half-cell detours when direct interpolation is invalid.
+- **Four-robot feedback:** ranks a tree at predicted measured-state positions,
+  accepts it only when every edge is currently within range, and otherwise uses
+  the current-position tree. Radio and pair constraints modify desired velocity.
+- **Physics:** three driven omni wheels and passive rollers per robot, bounded
+  motor speed and torque, a 2 ms integration step and a chassis collision envelope.
+- **Evidence:** frozen plans, input hashes, recorded perturbations, paired
+  comparisons and a separate validation seed.
 
-- Source bundle: `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`
-- Published README assets: `docs/paper-bundle/`
-- Validation status: passed
-- Composition: `8` analysis PNG files and `20` GIF files
-- Validation source: `paper_bundle_validation.json`
+## Measured results
 
-### Analysis Figures
+| Experiment | Robots / arena | Observed outcome |
+|---|---|---|
+| Saved regression | 4 / 16², 20², 24² cells | 48/48 safety and goal passes |
+| New validation, seed 109 | 4 / 28² cells | 12/12 safety and goal passes |
+| Experimental obstacle feedback | 6 / 20² cells | 3/3 executed nominal cases pass safety and goal checks |
+| Six-robot formation | 6 / 20² cells | Scheduling timeout; no physical execution |
 
-#### Success and Comparison
+Four-robot paired regression reduces maximum checkpoint error from **589.9 to
+152.4 mm** with identical plans, perturbations and physical durations. Maximum
+error across all 2 ms samples is **175.7 mm**. New validation records at most
+**152.5 mm** checkpoint error and **11.5 mm** final goal error. These 60 trials
+include repeated conditions, not 60 independent maps.
 
-![Success Rate Heatmap](docs/paper-bundle/png/success-rate-heatmap.png)
-![Comparison Summary](docs/paper-bundle/png/comparison-summary.png)
+Six-robot obstacle feedback eliminates contacts in the frozen open case but
+worsens checkpoint error from **368.6 to 1105.0 mm**. It remains exploratory;
+no six-robot disturbance sweep or independent validation is claimed.
 
-#### Runtime and Makespan
+[Protocol, trade-offs and per-run evidence](docs/RESULTS.md)
 
-![Runtime Distribution](docs/paper-bundle/png/runtime-distribution.png)
-![Makespan Distribution](docs/paper-bundle/png/makespan-distribution.png)
+## Run the validated demo
 
-#### Connectivity Diagnostics
-
-![Connectivity Rejection Heatmap](docs/paper-bundle/png/connectivity-rejection-heatmap.png)
-![Runtime Success Scatter](docs/paper-bundle/png/runtime-success-scatter.png)
-
-#### Map-Aware Analysis
-
-![Flow Atlas](docs/paper-bundle/png/flow-atlas.png)
-![Bottleneck Atlas](docs/paper-bundle/png/bottleneck-atlas.png)
-
-### Representative GIFs
-
-| Asset | Preview |
-| --- | --- |
-| Open 28x28 10-agent hero | ![Open 28x28 10-agent](docs/paper-bundle/gif/hero__open__28x28_10a.gif) |
-| Corridor 28x28 10-agent hero | ![Corridor 28x28 10-agent](docs/paper-bundle/gif/hero__corridor__28x28_10a.gif) |
-| Warehouse 28x28 10-agent hero | ![Warehouse 28x28 10-agent](docs/paper-bundle/gif/hero__warehouse__28x28_10a.gif) |
-| Formation-shift comparison | ![Formation Shift Comparison](docs/paper-bundle/gif/compare__formation_shift.gif) |
-
-## Installation
+Python 3.12, MuJoCo 3.14.0 and NumPy 1.26.3 are the tested versions. From a checkout of this branch:
 
 ```bash
-git clone https://github.com/aimldlnlp/cc-mapf.git
-cd cc-mapf
-python -m pip install -e .[dev]
+python -m pip install -e ".[mujoco,dev]" "mujoco==3.14.0" "numpy==1.26.3"
+python scripts/demo_mujoco.py
 ```
 
-## Quick Start
-
-Run one instance:
+The demo runs headless physics and checks safety, final goals and agreement with
+the bundled reference. Render the same execution at 1080p / 30 fps:
 
 ```bash
-ccmapf solve --config configs/instances/small_team.yaml
+python scripts/demo_mujoco.py --output artifacts/mujoco/demo-video --video artifacts/mujoco/demo-video/warehouse.mp4
+python -m pytest -q
 ```
 
-Run the official 4/6/8/10 benchmark:
+Rendering requires an OpenGL context. Physics and planning run on CPU; rendering
+uses the available graphics device. The demo explicitly enables the validated
+experimental tree selector; the base simulator retains its controller defaults.
+Generated runs and MP4s stay outside version control. Curated inputs and small
+evidence files are included.
+Exact reference checks are measured on Windows;
+[the tested environment](docs/results/tested-environment.json) records package versions.
 
-```bash
-ccmapf batch --config configs/suites/paper_best_4_6_8_10_official_rerun.yaml
-```
+## Scope and attribution
 
-Generate analysis figures for an existing run:
+This simulation engineering extension builds on
+[CC-MAPF](https://github.com/aimldlnlp/cc-mapf/tree/4e7419e584f6f1633624ffd440296a14d8da769e).
+Reference plans use the original `connected_step` implementation at that pinned
+commit. Its README reports 47/48 planning successes across 4/6/8/10 agents;
+that metric differs from physical execution success here. Optional workspace
+continuous-search extensions do not generate the reported reference plans.
 
-```bash
-python scripts/render/render_advanced_visualizations.py artifacts/runs/<run-id> analysis
-```
+One cell represents 1 m. Tests use radius-1 Manhattan adjacency and the bundled
+robot. Passing sampled simulations does not establish formal safety, hardware
+performance, real-time control or physical scaling to 8/10 robots. Bounded
+feasibility projection provides neither optimality nor an infeasibility certificate.
 
-Generate showcase GIFs for an existing run:
-
-```bash
-python scripts/render/render_showcase.py artifacts/runs/<run-id> showcase
-```
-
-## Reproducible Detached Workflows
-
-These runners launch long experiments in `tmux`, so they keep running after the terminal or editor is closed.
-
-```bash
-bash scripts/run/run_paper_4_6_8_10_detached.sh
-bash scripts/run/run_paper_official_only_detached.sh
-bash scripts/run/run_paper_rerender_analysis_deck_detached.sh
-```
-
-Useful monitoring commands:
-
-```bash
-tmux attach -t cc-paper-4-6-8-10
-tmux attach -t cc-paper-official-only
-tmux attach -t cc-paper-rerender
-```
-
-## Visualization Workflow
-
-The canonical release visuals come from the final bundle under `artifacts/paper-rollouts/20260414-160417-paper-4-6-8-10/bundle`, and the README-safe published copies live in `docs/paper-bundle/`. The checked-in `docs/media/` directory can still hold supporting media, but `docs/paper-bundle/` is the GitHub-safe subset used by the README.
-
-Render helpers:
-
-```bash
-python scripts/render/render_advanced_visualizations.py artifacts/runs/<run-id> analysis
-python scripts/render/render_showcase.py artifacts/runs/<run-id> docs/media
-python scripts/render/render_paper_gallery.py artifacts/runs/<run-id> gallery configs/render/paper_gallery.yaml
-```
-
-The bundle renderer currently produces:
-
-- `8` analysis PNG files
-- `20` GIF files
-- a manifest and validation report for the curated bundle
-
-Generated experiment outputs stay under `artifacts/` and are intentionally ignored from Git.
-
-## Project Layout
-
-```text
-cc-mapf/
-├── configs/
-│   ├── instances/
-│   ├── render/
-│   └── suites/
-├── docs/
-│   └── media/
-├── scripts/
-│   ├── dev/
-│   ├── render/
-│   └── run/
-├── src/cc_mapf/
-│   ├── planners/
-│   ├── model.py
-│   ├── paper_rollout.py
-│   ├── render.py
-│   └── validation.py
-├── tests/
-└── README.md
-```
-
-## Notes
-
-- Python package name stays `cc-mapf`.
-- Import path stays `cc_mapf`.
-- CLI entrypoint stays `ccmapf`.
-- `artifacts/runs/` remains the main runtime output location for benchmark runs.
-
-## License
-
-MIT.
+Robot Soccer Kit assets come from MuJoCo Menagerie / Rhoban Team under MIT.
+[Attribution](src/cc_mapf/assets/robot_soccer_kit/ATTRIBUTION.md) and
+[asset license](src/cc_mapf/assets/robot_soccer_kit/LICENSE) accompany the meshes.
+Project code: [MIT](LICENSE).

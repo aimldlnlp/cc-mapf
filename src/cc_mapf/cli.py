@@ -29,6 +29,19 @@ def build_parser() -> argparse.ArgumentParser:
     render_parser = subparsers.add_parser("render", help="Render showcase artifacts for a completed run")
     render_parser.add_argument("--run", required=True, help="Run directory path")
     render_parser.add_argument("--preset", default="showcase", choices=["showcase", "diagnostic"], help="Render preset")
+    simulation_parser = subparsers.add_parser("mujoco", help="Replay or track an existing plan in MuJoCo")
+    simulation_parser.add_argument("--config", required=True)
+    simulation_parser.add_argument("--plan", required=True, help="Plan JSON from a solve run")
+    simulation_parser.add_argument("--physics", action="store_true", help="Track with force-controlled planar robots")
+    simulation_parser.add_argument("--headless", action="store_true")
+    simulation_parser.add_argument("--cell-size", type=float, default=1.0)
+    simulation_parser.add_argument("--step-seconds", type=float, default=1.0)
+    simulation_parser.add_argument("--max-speed", type=float, default=1.0)
+    simulation_parser.add_argument("--video", help="Optional GIF or MP4 output")
+    simulation_parser.add_argument("--robot-model", choices=["soccer", "primitive"], default="soccer")
+    simulation_parser.add_argument("--preset",choices=["analysis","showcase"],default="analysis")
+    simulation_parser.add_argument("--drive", choices=["planar", "wheels"], default="planar", help="Physics actuation model")
+    simulation_parser.add_argument("--report", help="Optional JSON diagnostics")
     return parser
 
 
@@ -36,6 +49,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     console = Console()
+    if args.command == "mujoco":
+        from .mujoco_sim import run
+        console.print(run(args))
+        return 0
     if args.command == "generate":
         output_dir = generate_from_config(args.config, output_dir=args.output)
         console.print(f"Generated instances: {output_dir}")

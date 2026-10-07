@@ -1,0 +1,38 @@
+{
+  "case": "open_20x20_6a_s01",
+  "profile": "nominal",
+  "metrics_match_reference": true,
+  "tolerance_m": 1e-06,
+  "independent_validation": false,
+  "report": {
+    "completed": true,
+    "contact_steps": 0,
+    "numerical_warnings": 0,
+    "disconnected_seconds": 0.0,
+    "max_tracking_error_m": 1.1055415523008112,
+    "final_goal_errors_m": [
+      0.010019371881054378,
+      0.004838982511000463,
+      0.006030832519489381,
+      0.002033453785500232,
+      0.006034628430532509,
+      0.00799953723881726
+    ],
+    "simulation_seconds": 77.00000000000195
+  },
+  "checkpoint_error_m": 1.105002222318426,
+  "controller_audit": {
+    "variant": "obstacle",
+    "calls": 38500,
+    "median_ms": 3.548300010152161,
+    "p95_ms": 4.267425014404577,
+    "max_ms": 24.154899991117418,
+    "over_2ms_calls": 29051,
+    "max_radio_residual_m": 9.999787321524067e-07,
+    "max_clearance_residual_m": 9.996961643048141e-07,
+    "radio_violation_calls": 0,
+    "clearance_violation_calls": 0,
+    "max_speed_excess_m_s": 0.0,
+    "note": "Post-projection residuals in equivalent metres; controller timing excludes audit and physics."
+  }
+}

@@ -9,6 +9,8 @@ description = "Connectivity-constrained multi-agent path finding research packag
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+  "numpy>=1.26",
+  "Pillow>=10",
   "PyYAML>=6.0",
   "imageio>=2.34",
   "matplotlib>=3.8",
@@ -16,6 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mujoco = ["mujoco>=3.2,<4", "imageio-ffmpeg>=0.5"]
 dev = [
   "pytest>=8.0",
 ]
@@ -28,6 +31,9 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+cc_mapf = ["assets/robot_soccer_kit/*", "assets/robot_soccer_kit/assets/*.stl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

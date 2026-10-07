@@ -1,0 +1,103 @@
+name: warehouse_16x16_4a_s03
+grid:
+  width: 16
+  height: 16
+  obstacles:
+  - - 2
+    - 1
+  - - 2
+    - 3
+  - - 2
+    - 4
+  - - 2
+    - 5
+  - - 2
+    - 7
+  - - 2
+    - 8
+  - - 2
+    - 9
+  - - 2
+    - 11
+  - - 2
+    - 12
+  - - 2
+    - 13
+  - - 6
+    - 1
+  - - 6
+    - 3
+  - - 6
+    - 4
+  - - 6
+    - 5
+  - - 6
+    - 7
+  - - 6
+    - 8
+  - - 6
+    - 9
+  - - 6
+    - 11
+  - - 6
+    - 12
+  - - 6
+    - 13
+  - - 10
+    - 1
+  - - 10
+    - 3
+  - - 10
+    - 4
+  - - 10
+    - 5
+  - - 10
+    - 7
+  - - 10
+    - 8
+  - - 10
+    - 9
+  - - 10
+    - 11
+  - - 10
+    - 12
+  - - 10
+    - 13
+agents:
+- id: r01
+  start:
+  - 0
+  - 8
+  goal:
+  - 11
+  - 5
+- id: r02
+  start:
+  - 1
+  - 7
+  goal:
+  - 12
+  - 4
+- id: r03
+  start:
+  - 1
+  - 8
+  goal:
+  - 12
+  - 5
+- id: r04
+  start:
+  - 1
+  - 9
+  goal:
+  - 12
+  - 6
+connectivity:
+  mode: adjacency
+  radius: 1
+metadata:
+  family: warehouse
+  seed: 3
+  scale: 16x16_4a
+  tracking_margin_cells: 0.08
+  connectivity_feedback: true

@@ -75,6 +75,7 @@ coverage.xml
 
 # Artifacts (keep structure but not large files)
 artifacts/logs/
+artifacts/mujoco/
 artifacts/paper_rollouts/
 artifacts/paper-rollouts/
 artifacts/runs/*
@@ -87,3 +88,22 @@ artifacts/generated/*
 *.temp
 .DS_Store
 Thumbs.db
+
+# Generated analysis, simulator output and machine-specific configuration
+artifacts/*.py
+artifacts/*.md
+artifacts/tools/
+artifacts/portfolio-*/
+artifacts/*.html
+graphify-out/
+MUJOCO_LOG.TXT
+*.mp4
+.codex/
+.agents/
+.aws/
+!.env.example
+
+# Curated, reproducible portfolio evidence
+!docs/results/*.json
+!docs/results/*.csv
+!docs/media/portfolio-*.png
