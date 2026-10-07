@@ -137,3 +137,5 @@ The bundled six-robot open reference is rerun during publication. Its safety,
 duration, checkpoint tracking and final goals reproduce the previous candidate
 result within 1 micrometre. The 1105 mm tracking error remains. This repeat is
 a reproducibility check, not an independent validation case.
+[Tested environment](results/tested-environment.json) records the local package
+versions. Equivalent execution on other operating systems is not validated.

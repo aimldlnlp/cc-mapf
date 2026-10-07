@@ -65,10 +65,10 @@ no six-robot disturbance sweep or independent validation is claimed.
 
 ## Run the validated demo
 
-Python 3.12 is the tested version. From a checkout of this branch:
+Python 3.12, MuJoCo 3.14.0 and NumPy 1.26.3 are the tested versions. From a checkout of this branch:
 
 ```bash
-python -m pip install -e ".[mujoco,dev]"
+python -m pip install -e ".[mujoco,dev]" "mujoco==3.14.0" "numpy==1.26.3"
 python scripts/demo_mujoco.py
 ```
 
@@ -85,6 +85,8 @@ uses the available graphics device. The demo explicitly enables the validated
 experimental tree selector; the base simulator retains its controller defaults.
 Generated runs and MP4s stay outside version control. Curated inputs and small
 evidence files are included.
+Exact reference checks are measured on Windows;
+[the tested environment](docs/results/tested-environment.json) records package versions.
 
 ## Scope and attribution
 
