@@ -902,7 +902,8 @@ def render_makespan_boxplot(path: Path, records: list[dict[str, Any]], config: R
                 data.append(values)
                 labels.append(planner)
         if data:
-            box = ax.boxplot(data, patch_artist=True, tick_labels=labels)
+            box = ax.boxplot(data, patch_artist=True)
+            ax.set_xticks(range(1, len(labels) + 1), labels)
             palette = load_palette_preset(config.palette_preset) if config.palette_preset != "custom" else config.palette
             for patch, color in zip(box["boxes"], palette, strict=False):
                 patch.set_facecolor(color)

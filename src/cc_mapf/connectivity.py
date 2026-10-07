@@ -29,8 +29,8 @@ def cells_are_connected(
     if resolved_mode == "euclidean":
         dx = left[0] - right[0]
         dy = left[1] - right[1]
-        return dx * dx + dy * dy <= resolved_radius * resolved_radius
-    return manhattan(left, right) <= resolved_radius
+        return dx * dx + dy * dy <= resolved_radius * resolved_radius + 1e-9
+    return manhattan(left, right) <= resolved_radius + 1e-9
 
 
 def connectivity_components(

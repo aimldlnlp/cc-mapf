@@ -1,0 +1,22 @@
+{
+  "regression_passed": 48,
+  "regression_runs": 48,
+  "before_max_checkpoint_mm": 589.8659108910562,
+  "after_max_checkpoint_mm": 152.36742873374936,
+  "before_max_all_step_mm": 590.3206184370734,
+  "after_max_all_step_mm": 175.6998456661369,
+  "new_passed": 12,
+  "new_runs": 12,
+  "new_max_checkpoint_mm": 152.52767001071592,
+  "new_max_goal_mm": 11.541608510408052,
+  "new_max_all_step_mm": 152.83191435712462,
+  "unchanged_duration": true,
+  "identical_plans_configs_and_perturbations": true,
+  "controller_sha256": "649e88d4072a0349a4fc4d8c7ae7ea053e7ccc4f487e095a798d3443e5eb0620",
+  "regression_failures": [],
+  "new_failures": [],
+  "improved_over_1mm": 7,
+  "worsened_over_1mm": 0,
+  "within_1mm": 41,
+  "max_worsening_mm": 0.38904889571171
+}

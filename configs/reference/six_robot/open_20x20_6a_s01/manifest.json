@@ -1,0 +1,19 @@
+{
+  "reference_commit": "4e7419e584f6f1633624ffd440296a14d8da769e",
+  "planner_modified": false,
+  "seed": 1,
+  "grid": [
+    20,
+    20
+  ],
+  "agents": 6,
+  "original_archive_sha256": "9e2c4ba52e060e48c875db36a168e9e449c44b3d7444288d32b23f69d04c7fe4",
+  "suite_sha256": "7bc69f1692597ddf137b68e9c485e3b693a7be94553198523475c571d6163ad2",
+  "original_plan_sha256": "df98815885709bae4365f907524948f8064333a4c8ba8de61a39814613156494",
+  "instance_sha256": "591577fd7757e21630ee49ee53ae9fc4805337168a8c98045ddaf9eed4c49f23",
+  "variant_plan_sha256": "cf27ad3120fc593264b4490e28adaefa3d8aa8bdbae24aa140a241de9df111b9",
+  "feedback-on_config_sha256": "c93473714a33dd75215f8761cedad1d41159e5a44ea1751bb617f0ce44d4b938",
+  "upstream_reference_config_sha256": "0a2424cb15f80ccf1ed30fecd8472731590d4652660c48a18ab4cb16a1720bc6",
+  "upstream_reference_plan_sha256": "0bf010bea8c26ea7cc55b0e17eae6b33cf58e3bab01afe15421269cbd199b526",
+  "bundled_text_line_endings": "LF; original JSON/YAML values preserved"
+}

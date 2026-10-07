@@ -1,0 +1,18 @@
+{
+  "full_frames": 1186,
+  "full_duration_s": 39.53333333333333,
+  "preview_frames": 593,
+  "preview_duration_s": 19.766666666666666,
+  "preview_playback_speed": 2,
+  "fps": 30,
+  "size": [
+    1920,
+    1080
+  ],
+  "full_bytes": 37454760,
+  "preview_bytes": 4636397,
+  "files": {
+    "warehouse-full.mp4": "a90ba8f784a2a8a94af24d2e9cdbfa781f1d8a7575387dbaf82f365347c08029",
+    "warehouse-preview.mp4": "86e2b95cb1b99827e34ef9069f71a14ae5c90408308d943b2f8cd65c948cdbdf"
+  }
+}
