@@ -14,5 +14,7 @@
   "files": {
     "warehouse-full.mp4": "a90ba8f784a2a8a94af24d2e9cdbfa781f1d8a7575387dbaf82f365347c08029",
     "warehouse-preview.mp4": "86e2b95cb1b99827e34ef9069f71a14ae5c90408308d943b2f8cd65c948cdbdf"
-  }
+  },
+  "preview_attachment_url": "https://github.com/user-attachments/assets/da7e61c0-6972-49b3-9986-2dba6f9e40e6",
+  "release_url": "https://github.com/aimldlnlp/cc-mapf/releases/tag/mujoco-demo-v1"
 }

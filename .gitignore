@@ -93,6 +93,8 @@ Thumbs.db
 artifacts/*.py
 artifacts/*.md
 artifacts/tools/
+artifacts/portfolio-*/
+artifacts/*.html
 graphify-out/
 MUJOCO_LOG.TXT
 *.mp4

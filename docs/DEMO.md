@@ -15,5 +15,13 @@ against [the frozen reference](results/demo-reference.json).
 [Input and source hashes](results/demo-manifest.json) identify the demo.
 
 The short preview uses H.264 MP4 with YUV420 pixels and accelerated playback.
-The full video preserves simulated time. Playback and download links will be
-added after upload verification.
+The full video preserves simulated time. Playback and downloads are available below.
+
+
+https://github.com/user-attachments/assets/da7e61c0-6972-49b3-9986-2dba6f9e40e6
+
+![Warehouse navigation](media/portfolio-warehouse.png)
+
+[Download full MP4](https://github.com/aimldlnlp/cc-mapf/releases/download/mujoco-demo-v1/warehouse-full.mp4)
+
+[Download preview MP4](https://github.com/aimldlnlp/cc-mapf/releases/download/mujoco-demo-v1/warehouse-preview.mp4)

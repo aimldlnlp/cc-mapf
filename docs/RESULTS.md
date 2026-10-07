@@ -123,6 +123,8 @@ The local full test run records **99 passed, 1 failed**. The remaining failure i
 `test_connected_step_solves_representative_large_formation_case`: 12 robots on
 32×32 with a 12 s planner budget time out on the tested machine. This limit is
 reported rather than weakening the assertion or claiming a fully passing suite.
+An isolated run of the pinned original planner also times out under that same
+12 s budget (observed runtime 12.267 s), reproducing the limit before the extension.
 The simulator, scheduler and protocol tests pass. Graphics fixes cover the
 supported Matplotlib API and portable manifest paths on Windows.
 
@@ -130,3 +132,8 @@ The Python wheel builds successfully with all 30 STL files and the asset license
 The four-robot demo also reproduces its reference metrics from a checkout
 containing only the selected publication files. Rendering reproduces the same
 physical metrics; the 1080p MP4 decodes through its final frame.
+
+The bundled six-robot open reference is rerun during publication. Its safety,
+duration, checkpoint tracking and final goals reproduce the previous candidate
+result within 1 micrometre. The 1105 mm tracking error remains. This repeat is
+a reproducibility check, not an independent validation case.

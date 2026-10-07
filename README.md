@@ -7,10 +7,11 @@ communication graph. The original CC-MAPF planner is extended with continuous
 transition scheduling, measured-state feedback, native wheel physics and
 reproducible execution checks.
 
-![Wheel-driven warehouse navigation](docs/media/portfolio-warehouse.png)
+https://github.com/user-attachments/assets/da7e61c0-6972-49b3-9986-2dba6f9e40e6
 
 Demo: four robots, 16 × 16 warehouse, native wheel/roller contacts and a 1 m
-Manhattan communication radius. [Video and reproduction guide](docs/DEMO.md).
+Manhattan communication radius. Preview plays at **2× speed**.
+[Full MP4](https://github.com/aimldlnlp/cc-mapf/releases/download/mujoco-demo-v1/warehouse-full.mp4) · [Reproduction guide](docs/DEMO.md).
 
 ## Engineering problem
 
