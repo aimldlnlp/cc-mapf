@@ -1,0 +1,31 @@
+name: Validated warehouse demo
+
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  demo:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install tested dependencies
+        run: |
+          python -c "import json; from pathlib import Path; packages = json.loads(Path('docs/results/tested-environment.json').read_text())['packages']; Path('demo-constraints.txt').write_text('\n'.join(name+'=='+version for name, version in packages.items()), encoding='utf-8')"
+          python -m pip install -c demo-constraints.txt -e ".[mujoco,dev]"
+      - name: Test simulator, scheduler and protocol
+        run: python -m pytest -q tests/test_mujoco_sim.py tests/test_execution.py tests/test_tracking_protocol.py tests/test_six_robot_experiment.py
+      - name: Run frozen warehouse physics
+        run: python scripts/demo_mujoco.py --output artifacts/ci-demo
+      - name: Save demo evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: warehouse-demo-report
+          path: artifacts/ci-demo/report.json
+          if-no-files-found: ignore

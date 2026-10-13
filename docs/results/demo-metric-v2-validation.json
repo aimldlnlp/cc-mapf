@@ -1,0 +1,10 @@
+{
+  "tracking_metric": "same_timestamp_v2",
+  "physics_matches_legacy": true,
+  "legacy_tracking_matches": true,
+  "checkpoint_errors_bounded_by_all_samples": true,
+  "aligned_tracking_mm": 143.81171082321177,
+  "legacy_tracking_mm": 143.01222820727725,
+  "goal_mm": 10.081560117048328,
+  "report_sha256": "c8e38a28e2fdaa26bdcb2fd23ba8456ea3fdf74687ea70b1beee37b6940fb660"
+}

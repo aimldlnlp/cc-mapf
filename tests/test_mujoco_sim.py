@@ -218,7 +218,8 @@ def test_single_wheel_robot_tracks_a_turn(tmp_path):
     assert max(report['final_goal_errors_m']) < .02
 
 
-def test_replay_waypoint_times_and_goal_arrivals(tmp_path):
+@pytest.mark.parametrize('step_seconds', [1., .017])
+def test_replay_waypoint_times_and_goal_arrivals(tmp_path, step_seconds):
     pytest.importorskip('mujoco')
     from cc_mapf.mujoco_sim import run
     from cc_mapf.utils import dump_yaml
@@ -227,11 +228,13 @@ def test_replay_waypoint_times_and_goal_arrivals(tmp_path):
     dump_yaml(instance.to_dict(), config)
     plan.write_text(json.dumps({'a': [(0, 0), (1, 0), (2, 0)]}))
     report = run(Namespace(config=str(config), plan=str(plan), physics=False, headless=True,
-                           cell_size=1., step_seconds=1., max_speed=1., video=None, report=None))
+                           cell_size=1., step_seconds=step_seconds, max_speed=1., video=None, report=None))
     assert len(report['waypoint_samples']) == 3
     assert report['waypoint_disconnected_count'] == 0
     assert max(s.get('max_position_error_m', 0) for s in report['waypoint_samples']) < 1e-8
-    assert abs(report['goal_arrival_times_s'][0] - 1.98) <= .0051
+    assert report['max_tracking_error_m'] < 1e-8
+    assert report['tracking_metric'] == 'same_timestamp_v2'
+    assert abs(report['goal_arrival_times_s'][0] - 1.98 * step_seconds) <= .0051
 
 
 def test_replay_distinguishes_first_and_settled_arrival(tmp_path):

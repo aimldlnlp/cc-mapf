@@ -2,6 +2,8 @@
 
 **From discrete CC-MAPF plans to wheel-driven robot execution in MuJoCo.**
 
+[![Warehouse demo checks](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml/badge.svg?branch=feat%2Fmujoco-multi-robot)](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml)
+
 Four omnidirectional robots navigate shared spaces while preserving a connected
 communication graph. The original CC-MAPF planner is extended with continuous
 transition scheduling, measured-state feedback, native wheel physics and
@@ -87,6 +89,10 @@ Generated runs and MP4s stay outside version control. Curated inputs and small
 evidence files are included.
 Exact reference checks are measured on Windows;
 [the tested environment](docs/results/tested-environment.json) records package versions.
+The demo workflow checks the simulator, scheduler, protocol and frozen physics
+on Windows/Python 3.12 without rendering video. It does not run the full planner
+performance benchmark. See [metric-version notes](docs/RESULTS.md#tracking-metric-versions)
+before comparing new reports with historical results.
 
 ## Scope and attribution
 

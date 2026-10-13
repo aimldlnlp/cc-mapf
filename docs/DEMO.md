@@ -14,6 +14,12 @@ Presentation does not alter control or physics. The runner checks the result
 against [the frozen reference](results/demo-reference.json).
 [Input and source hashes](results/demo-manifest.json) identify the demo.
 
+The current reference uses same-time tracking: **143.812 mm** maximum error.
+The historical video and [legacy reference](results/demo-reference-legacy.json)
+record **143.012 mm** under the previous timing convention. Contacts,
+connectivity, goal errors and physical duration match. See
+[metric definitions](RESULTS.md#tracking-metric-versions).
+
 The short preview uses H.264 MP4 with YUV420 pixels and accelerated playback.
 The full video preserves simulated time. Playback and downloads are available below.
 

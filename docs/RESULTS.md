@@ -5,6 +5,25 @@ Reference planner: `connected_step` at
 source. All physical runs use 1 m/cell, radius-1 Manhattan connectivity, a 1 m/s
 velocity cap, native wheel physics and a 2 ms integration step.
 
+## Tracking metric versions
+
+New reports use `tracking_metric: same_timestamp_v2`: actual positions and
+uncontracted reference targets are compared at the same simulation time, for
+both all-step and waypoint samples. The final checkpoint is selected by its
+integer index rather than a floating-point duration comparison.
+
+Historical reports below retain the original definition: all-step positions
+after integration were compared with targets from before that integration;
+waypoints used their scheduled nominal timestamp. They have not been rewritten.
+New reports also expose `legacy_pre_step_max_tracking_error_m` for compatibility.
+
+The frozen warehouse demo is rechecked with unchanged contacts, connectivity,
+goal errors and 39.5 s duration. Same-time tracking is **143.812 mm**; its legacy
+value remains **143.012 mm**. The previous [demo reference](results/demo-reference-legacy.json)
+and [manifest](results/demo-manifest-legacy.json) are preserved separately.
+[Metric validation](results/demo-metric-v2-validation.json) records the checks.
+These changed measurements do not indicate changed controller performance.
+
 ## Four-robot tree selection
 
 The candidate ranks an MST at positions predicted from measured velocity.

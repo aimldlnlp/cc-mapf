@@ -388,7 +388,8 @@ def run(args) -> dict:
     camera.lookat[:] = [*((low + high + 1) * args.cell_size / 2), .15 * args.cell_size]
     camera.distance = max(3, float((high - low).max()) + 2) * args.cell_size * 1.6
     camera.azimuth, camera.elevation = 125, -48
-    duration = (max(len(path) for path in plan.values()) - 1) * args.step_seconds + 2
+    waypoint_count = max(len(path) for path in plan.values())
+    duration = (waypoint_count - 1) * args.step_seconds + 2
     motion_end = duration - 2
     tracking_margin = float(instance.metadata.get("tracking_margin_cells", 0.0)) * args.cell_size
     if not math.isfinite(tracking_margin) or not 0 <= tracking_margin <= .1 * args.cell_size:
@@ -408,6 +409,7 @@ def run(args) -> dict:
     disconnect_intervals = []
     disconnect_start = None
     max_error = 0.0
+    legacy_max_error = 0.0
     final_errors = []
     goal_positions = np.array([[(a.goal[0]+.5)*args.cell_size, (a.goal[1]+.5)*args.cell_size] for a in instance.agents])
     last_outside_goal = np.zeros(len(instance.agents))
@@ -488,7 +490,9 @@ def run(args) -> dict:
             for i in range(len(body_ids)):
                 if not outside[i] and first_goal_arrival[i] is None:
                     first_goal_arrival[i] = float(data.time)
-            max_error = max(max_error, float(np.linalg.norm(positions - nominal_targets, axis=1).max()))
+            legacy_max_error = max(legacy_max_error, float(np.linalg.norm(positions - nominal_targets, axis=1).max()))
+            sampled_targets = np.array([waypoint(plan[a.id], data.time, args.step_seconds, args.cell_size) for a in instance.agents])
+            max_error = max(max_error, float(np.linalg.norm(positions - sampled_targets, axis=1).max()))
             linked = {0}
             edges = []
             for i in range(len(positions)):
@@ -514,8 +518,8 @@ def run(args) -> dict:
                 max_radio_distance = max(max_radio_distance, bottleneck)
                 if data.time >= next_frame:
                     radio_samples.append({'time_s': float(data.time), 'tree_bottleneck_m': bottleneck})
-            if next_waypoint * args.step_seconds <= motion_end and data.time + model.opt.timestep / 2 >= next_waypoint * args.step_seconds:
-                expected = np.array([waypoint(plan[a.id], next_waypoint * args.step_seconds, args.step_seconds, args.cell_size) for a in instance.agents])
+            if next_waypoint < waypoint_count and data.time + model.opt.timestep / 2 >= next_waypoint * args.step_seconds:
+                expected = sampled_targets
                 waypoint_samples.append({'waypoint': next_waypoint, 'sample_time_s': float(data.time),
                                          'connected': len(linked) == len(positions),
                                          'max_position_error_m': float(np.linalg.norm(positions-expected, axis=1).max())})
@@ -571,7 +575,10 @@ def run(args) -> dict:
     report = {"mode": "planar_physics" if args.physics else "kinematic_replay", "instance": instance.name,
               "completed": bool(data.time >= duration), "simulation_seconds": float(data.time),
               "cell_size_m": args.cell_size, "step_seconds": args.step_seconds, "max_speed_m_s": args.max_speed,
-              "max_tracking_error_m": max_error, "final_goal_errors_m": final_errors,
+              "max_tracking_error_m": max_error,
+              "tracking_metric": "same_timestamp_v2",
+              "legacy_pre_step_max_tracking_error_m": legacy_max_error,
+              "final_goal_errors_m": final_errors,
               "contact_steps": int(contacts), "disconnected_seconds": disconnected * model.opt.timestep, "samples": samples,
               "mujoco_version": mujoco.__version__}
     report['numerical_warnings'] = int(sum(data.warning[w].number for w in (mujoco.mjtWarning.mjWARN_BADQPOS, mujoco.mjtWarning.mjWARN_BADQVEL, mujoco.mjtWarning.mjWARN_BADQACC)))

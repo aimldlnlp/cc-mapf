@@ -36,7 +36,10 @@ def main():
     baseline = json.loads((ROOT / 'docs/results/demo-reference.json').read_text())
     assert report['completed'] and report['contact_steps'] == report['numerical_warnings'] == 0
     assert report['disconnected_seconds'] == 0 and max(report['final_goal_errors_m']) < .02
-    for field in ('max_tracking_error_m', 'final_goal_errors_m', 'simulation_seconds'):
+    tracking_field = ('max_tracking_error_m' if baseline.get('tracking_metric') == 'same_timestamp_v2'
+                      else 'legacy_pre_step_max_tracking_error_m')
+    assert np.allclose(report[tracking_field], baseline['max_tracking_error_m'], atol=1e-6, rtol=0)
+    for field in ('final_goal_errors_m', 'simulation_seconds'):
         assert np.allclose(report[field], baseline[field], atol=1e-6, rtol=0), field
     print(json.dumps(dict(completed=report['completed'], contacts=report['contact_steps'],
         disconnected_s=report['disconnected_seconds'], goal_mm=1000*max(report['final_goal_errors_m']),
