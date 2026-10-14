@@ -14,6 +14,10 @@ Presentation does not alter control or physics. The runner checks the result
 against [the frozen reference](results/demo-reference.json).
 [Input and source hashes](results/demo-manifest.json) identify the demo.
 
+Each run needs fresh output paths. If `report.json` or the requested MP4 already
+exists, choose another folder and video filename rather than deleting prior evidence.
+For example, use `--output artifacts/mujoco/demo-video-2 --video artifacts/mujoco/demo-video-2/warehouse.mp4`.
+
 The current reference uses same-time tracking: **143.812 mm** maximum error.
 The historical video and [legacy reference](results/demo-reference-legacy.json)
 record **143.012 mm** under the previous timing convention. Contacts,

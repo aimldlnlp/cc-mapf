@@ -2,7 +2,7 @@
 
 **From discrete CC-MAPF plans to wheel-driven robot execution in MuJoCo.**
 
-[![Warehouse demo checks](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml/badge.svg?branch=feat%2Fmujoco-multi-robot)](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml)
+[![Warehouse demo checks](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml/badge.svg?branch=main)](https://github.com/aimldlnlp/cc-mapf/actions/workflows/demo.yml)
 
 Four omnidirectional robots navigate shared spaces while preserving a connected
 communication graph. The original CC-MAPF planner is extended with continuous
@@ -65,13 +65,32 @@ no six-robot disturbance sweep or independent validation is claimed.
 
 [Protocol, trade-offs and per-run evidence](docs/RESULTS.md)
 
+[Portfolio case study: problem, contribution and limitations](docs/CASE_STUDY.md)
+
 ## Run the validated demo
 
-Python 3.12, MuJoCo 3.14.0 and NumPy 1.26.3 are the tested versions. From a checkout of this branch:
+Python 3.12, MuJoCo 3.14.0 and NumPy 1.26.3 are the tested versions. Clone the repository and use a Python 3.12 virtual environment:
+
+```bash
+git clone https://github.com/aimldlnlp/cc-mapf.git
+cd cc-mapf
+python -m venv .venv
+```
+
+Activate it with `.venv\Scripts\Activate.ps1` in Windows PowerShell or
+`source .venv/bin/activate` on Linux/macOS. Windows is the validated platform;
+other platforms have not been checked. Then install and run:
 
 ```bash
 python -m pip install -e ".[mujoco,dev]" "mujoco==3.14.0" "numpy==1.26.3"
 python scripts/demo_mujoco.py
+```
+
+The runner preserves existing evidence and refuses to reuse an output containing
+`report.json`. For another run, choose a fresh folder:
+
+```bash
+python scripts/demo_mujoco.py --output artifacts/mujoco/demo-second-run
 ```
 
 The demo runs headless physics and checks safety, final goals and agreement with
@@ -80,6 +99,13 @@ the bundled reference. Render the same execution at 1080p / 30 fps:
 ```bash
 python scripts/demo_mujoco.py --output artifacts/mujoco/demo-video --video artifacts/mujoco/demo-video/warehouse.mp4
 python -m pytest -q
+```
+
+The full test suite has a documented large-formation planner timeout on the
+tested machine. To run the checks used by the demo workflow:
+
+```bash
+python -m pytest -q tests/test_mujoco_sim.py tests/test_execution.py tests/test_tracking_protocol.py tests/test_six_robot_experiment.py
 ```
 
 Rendering requires an OpenGL context. Physics and planning run on CPU; rendering
