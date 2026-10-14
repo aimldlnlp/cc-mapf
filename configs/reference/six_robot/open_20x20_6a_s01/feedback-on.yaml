@@ -1,0 +1,116 @@
+name: open_20x20_6a_s01
+grid:
+  width: 20
+  height: 20
+  obstacles:
+  - - 1
+    - 10
+  - - 1
+    - 14
+  - - 2
+    - 2
+  - - 2
+    - 3
+  - - 2
+    - 9
+  - - 2
+    - 18
+  - - 4
+    - 3
+  - - 4
+    - 18
+  - - 5
+    - 1
+  - - 6
+    - 2
+  - - 6
+    - 11
+  - - 7
+    - 5
+  - - 7
+    - 17
+  - - 7
+    - 18
+  - - 8
+    - 6
+  - - 8
+    - 15
+  - - 9
+    - 7
+  - - 9
+    - 8
+  - - 10
+    - 7
+  - - 10
+    - 18
+  - - 11
+    - 2
+  - - 12
+    - 6
+  - - 14
+    - 4
+  - - 15
+    - 6
+  - - 15
+    - 11
+  - - 16
+    - 11
+  - - 16
+    - 12
+  - - 16
+    - 18
+  - - 18
+    - 16
+agents:
+- id: r01
+  start:
+  - 0
+  - 19
+  goal:
+  - 15
+  - 15
+- id: r02
+  start:
+  - 1
+  - 18
+  goal:
+  - 16
+  - 15
+- id: r03
+  start:
+  - 1
+  - 19
+  goal:
+  - 17
+  - 14
+- id: r04
+  start:
+  - 2
+  - 19
+  goal:
+  - 17
+  - 15
+- id: r05
+  start:
+  - 3
+  - 18
+  goal:
+  - 17
+  - 16
+- id: r06
+  start:
+  - 3
+  - 19
+  goal:
+  - 18
+  - 15
+connectivity:
+  mode: adjacency
+  radius: 1
+metadata:
+  family: open
+  seed: 1
+  scale: 20x20_6a
+  tracking_margin_cells: 0.08
+  connectivity_feedback: true
+  experimental_six_robot_feedback: true

@@ -1,0 +1,16 @@
+{
+  "completed": true,
+  "contact_steps": 0,
+  "numerical_warnings": 0,
+  "disconnected_seconds": 0.0,
+  "max_tracking_error_m": 1.1055415523008112,
+  "final_goal_errors_m": [
+    0.010019371881054378,
+    0.004838982511000463,
+    0.006030832519489381,
+    0.002033453785500232,
+    0.006034628430532509,
+    0.00799953723881726
+  ],
+  "simulation_seconds": 77.00000000000195
+}

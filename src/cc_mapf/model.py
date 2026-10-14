@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-Cell = tuple[int, int]
+Cell = tuple[int | float, int | float]
 Plan = dict[str, list[Cell]]
 RenderPreset = Literal["showcase", "diagnostic"]
 

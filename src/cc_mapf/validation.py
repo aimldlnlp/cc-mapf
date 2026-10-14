@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import math
 from typing import Any
 
 from .connectivity import connectivity_components as compute_connectivity_components
@@ -66,7 +67,7 @@ def validate_state(instance: Instance, positions: dict[str, Cell], time_index: i
         cell = positions[agent.id]
         if not in_bounds(instance.grid, cell):
             move_failures.append({"time": time_index, "agent": agent.id, "reason": "out_of_bounds", "cell": list(cell)})
-        elif not is_free(instance.grid, cell):
+        elif not is_free(instance.grid, (math.floor(cell[0] + .5), math.floor(cell[1] + .5))):
             move_failures.append({"time": time_index, "agent": agent.id, "reason": "obstacle", "cell": list(cell)})
         occupancy[cell].append(agent.id)
     for cell, agents_here in occupancy.items():
@@ -86,7 +87,8 @@ def validate_state(instance: Instance, positions: dict[str, Cell], time_index: i
 def is_legal_move(prev_cell: Cell, next_cell: Cell) -> bool:
     if prev_cell == next_cell:
         return True
-    return any((prev_cell[0] + dx, prev_cell[1] + dy) == next_cell for dx, dy in DIRECTIONS4)
+    dx, dy = next_cell[0] - prev_cell[0], next_cell[1] - prev_cell[1]
+    return (dx == 0 or dy == 0) and abs(dx) + abs(dy) <= 1
 
 
 def validate_transition(
@@ -128,10 +130,12 @@ def validate_transition(
 
 
 def first_arrival_time(path: list[Cell], goal: Cell) -> int | None:
-    for index, cell in enumerate(path):
-        if cell == goal:
-            return index
-    return None
+    if not path or path[-1] != goal:
+        return None
+    index = len(path) - 1
+    while index > 0 and path[index - 1] == goal:
+        index -= 1
+    return index
 
 
 def validate_plan(instance: Instance, plan: Plan | None) -> ValidationResult:

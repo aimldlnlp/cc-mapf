@@ -8,7 +8,7 @@ from time import perf_counter
 from typing import Callable
 
 from ..environment import DIRECTIONS4, add_cell, bfs_shortest_path, in_bounds, is_free, manhattan, neighbors
-from ..model import AgentSpec, Cell, Instance, PlannerResult
+from ..model import AgentSpec, Cell, GridMap, Instance, PlannerResult
 from .prioritized import PrioritizedPlanner
 
 JointState = tuple[Cell, ...]
@@ -115,7 +115,23 @@ class ConnectedStepPlanner:
         self.initial_warm_path_policy = initial_warm_path_policy
 
     def solve(self, instance: Instance, time_limit_s: float) -> PlannerResult:
+        if instance.connectivity.mode != "adjacency" or instance.connectivity.radius != 1:
+            raise ValueError("connected_step supports only adjacency connectivity with radius=1.")
         exact_budget = min(time_limit_s, 10.0)
+        if instance.metadata.get("continuous_execution", False):
+            if len(instance.agents) > 4 or instance.grid.width * instance.grid.height > 256:
+                raise ValueError("Continuous joint search is limited to four agents and 256 cells.")
+            refine = instance.metadata.get("continuous_refinement", False)
+            coarse_budget = min(1., time_limit_s / 4) if refine else time_limit_s
+            result = connected_joint_a_star(instance, coarse_budget, continuous=True)
+            if result.status != "solved" and refine:
+                remaining = max(0., time_limit_s - result.runtime_s)
+                if remaining:
+                    refined = refined_continuous_solve(instance, remaining)
+                    refined.runtime_s += result.runtime_s
+                    result = refined
+            result.metadata["continuous_execution"] = True
+            return result
         if len(instance.agents) <= 4 and instance.grid.width * instance.grid.height <= 256:
             exact_result = connected_joint_a_star(instance, exact_budget)
             populate_default_metadata(exact_result.metadata, mode="exact_joint_astar")
@@ -3143,11 +3159,11 @@ def count_agents_at_goal(state: JointState, goals: JointState) -> int:
     return sum(1 for current, goal in zip(state, goals, strict=True) if current == goal)
 
 
-def adjacency_graph(positions: JointState) -> list[list[int]]:
+def adjacency_graph(positions: JointState, radius: float = 1) -> list[list[int]]:
     graph = [[] for _ in range(len(positions))]
     for left in range(len(positions)):
         for right in range(left + 1, len(positions)):
-            if manhattan(positions[left], positions[right]) == 1:
+            if manhattan(positions[left], positions[right]) <= radius:
                 graph[left].append(right)
                 graph[right].append(left)
     return graph
@@ -3171,10 +3187,10 @@ def graph_distance_k_neighbors(state: JointState, seeds: set[int], k: int) -> se
     return seen
 
 
-def is_connected_positions(positions: JointState) -> bool:
+def is_connected_positions(positions: JointState, radius: float = 1) -> bool:
     if len(positions) <= 1:
         return True
-    graph = adjacency_graph(positions)
+    graph = adjacency_graph(positions, radius)
     seen = {0}
     queue = deque([0])
     while queue:
@@ -3260,7 +3276,81 @@ def safe_mean(total: int, count_items: int) -> float:
     return total / count_items
 
 
-def connected_joint_a_star(instance: Instance, time_limit_s: float) -> PlannerResult:
+def connected_transition(previous: JointState, current: JointState, radius: float = 1) -> bool:
+    """Check every graph-change interval of Manhattan-connected linear motion."""
+    if len(previous) <= 1:
+        return True
+    seen = {0}
+    pending = [0]
+    while pending:
+        i = pending.pop()
+        for j in range(len(previous)):
+            if j not in seen and manhattan(previous[i], previous[j]) <= radius and manhattan(current[i], current[j]) <= radius:
+                seen.add(j)
+                pending.append(j)
+    if len(seen) == len(previous):
+        return True
+    # A shared tree is sufficient, but links can also hand off during the move.
+    events = {0.0, 1.0}
+    for i in range(len(previous)):
+        for j in range(i + 1, len(previous)):
+            delta = [previous[i][axis] - previous[j][axis] for axis in (0, 1)]
+            velocity = [(current[i][axis] - previous[i][axis]) - (current[j][axis] - previous[j][axis]) for axis in (0, 1)]
+            breaks = sorted({0.0, 1.0} | {-delta[k] / velocity[k] for k in (0, 1) if velocity[k] and 0 < -delta[k] / velocity[k] < 1})
+            events.update(breaks)
+            for left, right in zip(breaks, breaks[1:]):
+                dleft = sum(abs(delta[k] + velocity[k] * left) for k in (0, 1))
+                dright = sum(abs(delta[k] + velocity[k] * right) for k in (0, 1))
+                if dleft != dright:
+                    crossing = left + (radius - dleft) * (right - left) / (dright - dleft)
+                    if left < crossing < right:
+                        events.add(crossing)
+    ordered = sorted(events)
+    for phase in ordered + [(a + b) / 2 for a, b in zip(ordered, ordered[1:])]:
+        positions = [(a[0] + (b[0] - a[0]) * phase, a[1] + (b[1] - a[1]) * phase) for a, b in zip(previous, current)]
+        reached, pending = {0}, [0]
+        while pending:
+            i = pending.pop()
+            for j in range(len(positions)):
+                if j not in reached and manhattan(positions[i], positions[j]) <= radius + 1e-9:
+                    reached.add(j)
+                    pending.append(j)
+        if len(reached) != len(previous):
+            return False
+    return True
+
+
+def refined_continuous_solve(instance: Instance, time_limit_s: float) -> PlannerResult:
+    """Half-cell lattice with conservative 0.25-cell body clearance."""
+    blocked = set()
+    width, height = instance.grid.width * 2 - 1, instance.grid.height * 2 - 1
+    for x in range(width):
+        for y in range(height):
+            if any(abs(x / 2 - ox) < .75 and abs(y / 2 - oy) < .75 for ox, oy in instance.grid.obstacles):
+                blocked.add((x, y))
+    agents = [AgentSpec(a.id, (2 * a.start[0], 2 * a.start[1]), (2 * a.goal[0], 2 * a.goal[1])) for a in instance.agents]
+    refined = Instance(instance.name, GridMap(width, height, blocked), agents)
+    result = connected_joint_a_star(refined, time_limit_s, continuous=True, radius=2, separation=1, heuristic_weight=2)
+    if result.plan:
+        result.plan = {key: [(x / 2, y / 2) for x, y in path] for key, path in result.plan.items()}
+    result.metadata["waypoint_resolution_cells"] = .5
+    result.metadata["heuristic_weight"] = 2
+    return result
+
+
+def separated_transition(previous: JointState, current: JointState, minimum: float) -> bool:
+    for i in range(len(previous)):
+        for j in range(i + 1, len(previous)):
+            delta = [previous[i][k] - previous[j][k] for k in (0, 1)]
+            velocity = [(current[i][k] - previous[i][k]) - (current[j][k] - previous[j][k]) for k in (0, 1)]
+            squared_speed = sum(v * v for v in velocity)
+            phase = max(0., min(1., -sum(a * b for a, b in zip(delta, velocity)) / squared_speed)) if squared_speed else 0.
+            if sum((a + b * phase) ** 2 for a, b in zip(delta, velocity)) < minimum * minimum - 1e-9:
+                return False
+    return True
+
+
+def connected_joint_a_star(instance: Instance, time_limit_s: float, *, continuous: bool = False, radius: float = 1, separation: float = 0, heuristic_weight: float = 1) -> PlannerResult:
     start_time = perf_counter()
     agent_ids = [agent.id for agent in instance.agents]
     starts = tuple(agent.start for agent in instance.agents)
@@ -3303,15 +3393,15 @@ def connected_joint_a_star(instance: Instance, time_limit_s: float) -> PlannerRe
             result.metadata["disconnected_state_prunes"] = connectivity_rejections
             return result
         for next_state in enumerate_successors(instance, state):
-            if not is_connected_positions(next_state):
-                connectivity_rejections += 1
-                continue
             next_cost = g_cost + 1
             if next_cost >= cost_so_far.get(next_state, BIG_DISTANCE):
                 continue
+            if not is_connected_positions(next_state, radius) or (continuous and not connected_transition(state, next_state, radius)) or (separation and not separated_transition(state, next_state, separation)):
+                connectivity_rejections += 1
+                continue
             cost_so_far[next_state] = next_cost
             parents[next_state] = state
-            heapq.heappush(queue, (next_cost + heuristic(next_state, goals), next_cost, next(ticket), next_state))
+            heapq.heappush(queue, (next_cost + heuristic_weight * heuristic(next_state, goals), next_cost, next(ticket), next_state))
     result = PlannerResult(
         status="failed",
         plan=None,

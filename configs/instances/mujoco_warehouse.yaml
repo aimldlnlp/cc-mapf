@@ -1,0 +1,52 @@
+name: warehouse_8x8_4a_s01
+grid:
+  width: 8
+  height: 8
+  obstacles:
+  - - 2
+    - 1
+  - - 2
+    - 3
+  - - 2
+    - 4
+  - - 2
+    - 5
+agents:
+- id: r01
+  start:
+  - 1
+  - 6
+  goal:
+  - 5
+  - 4
+- id: r02
+  start:
+  - 2
+  - 6
+  goal:
+  - 6
+  - 3
+- id: r03
+  start:
+  - 2
+  - 7
+  goal:
+  - 6
+  - 4
+- id: r04
+  start:
+  - 3
+  - 6
+  goal:
+  - 6
+  - 5
+connectivity:
+  mode: adjacency
+  radius: 1
+metadata:
+  family: warehouse
+  seed: 1
+  scale: 8x8_4a
+  continuous_execution: true
+  continuous_refinement: true
+  tracking_margin_cells: 0.08

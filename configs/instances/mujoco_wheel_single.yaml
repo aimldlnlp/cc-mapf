@@ -1,0 +1,13 @@
+name: wheel_single
+grid:
+  width: 5
+  height: 5
+  obstacles: []
+agents:
+  - id: r01
+    start: [1, 1]
+    goal: [3, 3]
+connectivity:
+  mode: adjacency
+  radius: 1
+metadata: {}

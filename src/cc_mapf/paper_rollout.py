@@ -433,7 +433,8 @@ def render_runtime_distribution(path: Path, records: list[dict[str, Any]], confi
         [float(record["runtime_s"]) for record in records if record["scale"] == scale]
         for scale in PAPER_SCALES
     ]
-    ax.boxplot(data, patch_artist=True, tick_labels=PAPER_SCALES)
+    ax.boxplot(data, patch_artist=True)
+    ax.set_xticks(range(1, len(PAPER_SCALES) + 1), PAPER_SCALES)
     ax.set_title("Runtime Distribution by Scale")
     ax.set_ylabel("Runtime (s)")
     ax.tick_params(axis="x", rotation=15)
@@ -452,7 +453,8 @@ def render_makespan_distribution(path: Path, records: list[dict[str, Any]], conf
         ]
         for scale in PAPER_SCALES
     ]
-    ax.boxplot(data, patch_artist=True, tick_labels=PAPER_SCALES)
+    ax.boxplot(data, patch_artist=True)
+    ax.set_xticks(range(1, len(PAPER_SCALES) + 1), PAPER_SCALES)
     ax.set_title("Solved Makespan Distribution by Scale")
     ax.set_ylabel("Makespan")
     ax.tick_params(axis="x", rotation=15)
@@ -530,9 +532,9 @@ def render_comparison_summary(
 def validate_curated_bundle(bundle_dir: Path, *, config: RenderConfig | None = None) -> dict[str, Any]:
     pngs = sorted(bundle_dir.rglob("*.png"))
     gifs = sorted(bundle_dir.rglob("*.gif"))
-    duplicate_paths = len({str(path.relative_to(bundle_dir)) for path in pngs + gifs}) != len(pngs) + len(gifs)
+    duplicate_paths = len({path.relative_to(bundle_dir).as_posix() for path in pngs + gifs}) != len(pngs) + len(gifs)
     suspicious_assets = [
-        str(path.relative_to(bundle_dir))
+        path.relative_to(bundle_dir).as_posix()
         for path in pngs + gifs
         if path.name.startswith(("temp", "tmp", "placeholder"))
     ]
@@ -726,7 +728,7 @@ def render_curated_bundle(
                 title=f"{family.replace('_', ' ').title()} | {scale}",
                 show_trails=True,
             )
-            manifest_sources[str(gif_path.relative_to(output_dir))] = {
+            manifest_sources[gif_path.relative_to(output_dir).as_posix()] = {
                 "kind": "hero_gif",
                 "family": family,
                 "scale": scale,
@@ -734,7 +736,7 @@ def render_curated_bundle(
                 "planner": record["planner"],
                 "instance": record["instance"],
             }
-            asset_listing["gif"].append(str(gif_path.relative_to(output_dir)))
+            asset_listing["gif"].append(gif_path.relative_to(output_dir).as_posix())
 
     analysis_pngs = [
         ("success-rate-heatmap.png", lambda path: render_success_rate_heatmap(path, official_records, config), "analysis_png"),
@@ -781,8 +783,8 @@ def render_curated_bundle(
     for filename, render_fn, kind in analysis_pngs:
         path = png_dir / filename
         render_fn(path)
-        manifest_sources[str(path.relative_to(output_dir))] = {"kind": kind, "name": filename}
-        asset_listing["png"].append(str(path.relative_to(output_dir)))
+        manifest_sources[path.relative_to(output_dir).as_posix()] = {"kind": kind, "name": filename}
+        asset_listing["png"].append(path.relative_to(output_dir).as_posix())
 
     for family in PAPER_FAMILIES:
         baseline_record, winner_record = compare_pairs[family]
@@ -802,7 +804,7 @@ def render_curated_bundle(
             right_title=winner_record["planner"],
             show_trails=True,
         )
-        manifest_sources[str(path.relative_to(output_dir))] = {
+        manifest_sources[path.relative_to(output_dir).as_posix()] = {
             "kind": "compare_gif",
             "family": family,
             "scale": winner_record["scale"],
@@ -811,7 +813,7 @@ def render_curated_bundle(
             "winner_planner": winner_record["planner"],
             "instance": winner_record["instance"],
         }
-        asset_listing["gif"].append(str(path.relative_to(output_dir)))
+        asset_listing["gif"].append(path.relative_to(output_dir).as_posix())
 
     manifest = ShowcaseManifest(
         run_id=output_dir.name,
